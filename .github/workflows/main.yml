@@ -1,0 +1,110 @@
+name: Docker Containers Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Create required directories
+        run: |
+          mkdir -p ~/data/mysql/
+          mkdir -p ~/data/wordpress/
+      
+      - name: Create test secrets
+        env:
+          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_HOME: ${{ secrets.WP_HOME }}
+          WP_DB_NAME: ${{ secrets.WP_DB_NAME }}
+          WP_ADMIN_EMAIL: ${{ secrets.WP_ADMIN_EMAIL }}
+          WP_DB_HOST: ${{ secrets.WP_DB_HOST }}
+          DB_USER: ${{ secrets.DB_USER }}
+          WP_ADMIN_USER: ${{ secrets.WP_ADMIN_USER }}
+          DB_ROOT_PASSWORD: ${{ secrets.DB_ROOT_PASSWORD }}
+          WP_ADMIN_PASSWORD: ${{ secrets.WP_ADMIN_PASSWORD }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+        run: |
+          mkdir -p secrets
+          echo "$DOMAIN_NAME" > secrets/domain_name
+          echo "$WP_URL" > secrets/wp_url
+          echo "$WP_HOME" > secrets/wp_home
+          echo "$WP_DB_NAME" > secrets/wp_db_name
+          echo "$WP_ADMIN_EMAIL" > secrets/wp_admin_email
+          echo "$WP_DB_HOST" > secrets/wp_db_host
+          echo "$DB_USER" > secrets/db_user
+          echo "$WP_ADMIN_USER" > secrets/wp_admin_user
+          echo "$DB_ROOT_PASSWORD" > secrets/db_root_password
+          echo "$WP_ADMIN_PASSWORD" > secrets/wp_admin_password
+          echo "$DB_PASSWORD" > secrets/db_password
+          echo "$DB_HOST" > secrets/db_host
+      
+      - name: Build Docker images
+        run: make build && sleep 30 # Give containers time to build
+      
+      
+      - name: Start containers
+        run: |
+          make up
+          sleep 30  # Give containers time to start
+      
+      - name: Check running containers
+        run: docker ps
+      
+      - name: Test MariaDB container
+        run: |
+          MARIADB_CONTAINER_ID=$(docker ps -q --filter "name=mariadb")
+          if [ -z "$MARIADB_CONTAINER_ID" ]; then
+            echo "MariaDB container is not running"
+            exit 1
+          fi
+          HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $MARIADB_CONTAINER_ID)
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "MariaDB container is not healthy: $HEALTH_STATUS"
+            docker logs $MARIADB_CONTAINER_ID
+            exit 1
+          fi
+          echo "MariaDB container is running and healthy"
+      
+      - name: Test WordPress container
+        run: |
+          WP_CONTAINER_ID=$(docker ps -q --filter "name=wordpress")
+          if [ -z "$WP_CONTAINER_ID" ]; then
+            echo "WordPress container is not running"
+            exit 1
+          fi
+          HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $WP_CONTAINER_ID)
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "WordPress container is not healthy: $HEALTH_STATUS"
+            docker logs $WP_CONTAINER_ID
+            exit 1
+          fi
+          echo "WordPress container is running and healthy"
+      
+      - name: Test NGINX container
+        run: |
+          NGINX_CONTAINER_ID=$(docker ps -q --filter "name=nginx")
+          if [ -z "$NGINX_CONTAINER_ID" ]; then
+            echo "NGINX container is not running"
+            exit 1
+          fi
+          HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $NGINX_CONTAINER_ID)
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "NGINX container is not healthy: $HEALTH_STATUS"
+            docker logs $NGINX_CONTAINER_ID
+            exit 1
+          fi
+          echo "NGINX container is running and healthy"
+      
+      - name: Stop containers
+        run: make down
+        if: always()
