@@ -13,15 +13,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Install Docker Compose
-        run: |
-          docker --version
-          DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-          mkdir -p $DOCKER_CONFIG/cli-plugins
-          curl -SL https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
-          chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-          docker compose version
           
       - name: Create required directories
         run: |
@@ -58,12 +49,14 @@ jobs:
           echo "$DB_HOST" > secrets/db_host
       
       - name: Build Docker images
-        run: make build && sleep 30 # Give containers time to build
+        run: |
+          docker compose -f ./srcs/docker-compose.yaml build
+          sleep 30 # Give containers time to build
       
       
       - name: Start containers
         run: |
-          make up
+          docker compose -f ./srcs/docker-compose.yaml up
           sleep 30  # Give containers time to start
       
       - name: Check running containers
@@ -115,5 +108,5 @@ jobs:
           echo "NGINX container is running and healthy"
       
       - name: Stop containers
-        run: make down
+        run: docker compose -f ./srcs/docker-compose.yaml down -v
         if: always()
