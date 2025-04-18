@@ -13,7 +13,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
       
+      - name: check files
+        run: |
+          find . -type f -printf "%p\n"
       - name: Create required directories
         run: |
           mkdir -p ~/data/mysql/
