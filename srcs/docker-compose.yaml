@@ -1,0 +1,119 @@
+---
+services:
+  mariadb:
+    image: mariadb:42
+    build:
+      context: ./requirements/mariadb/
+      dockerfile: Dockerfile
+    container_name: mariadb
+    restart: always
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - inception
+    secrets:
+    - db_user
+    - db_password
+    - db_root_password
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  wordpress:
+    image: wordpress:42
+    build:
+      context: ./requirements/wordpress/
+      dockerfile: Dockerfile
+    container_name: wordpress
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - inception
+    secrets:
+      - db_password
+      - db_user
+      - wp_db_host
+      - wp_admin_user
+      - wp_admin_password
+      - wp_admin_email
+      - wp_url
+      - domain_name
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: nginx:42
+    build:
+      context: ./requirements/nginx/
+      dockerfile: Dockerfile
+    depends_on:
+      wordpress:
+        condition: service_healthy
+    container_name: nginx
+    restart: always
+    ports:
+      - "443:443"
+    secrets:
+      - domain_name
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 1
+      start_period: 30s
+
+secrets:
+  db_user:
+    file: ../secrets/db_user
+  db_password:
+    file: ../secrets/db_password
+  db_root_password:
+    file: ../secrets/db_root_password
+  db_host:
+    file: ../secrets/db_host
+  wp_url:
+    file: ../secrets/wp_url
+  wp_admin_email:
+    file: ../secrets/wp_admin_email
+  wp_admin_password:
+    file: ../secrets/wp_admin_password
+  wp_db_host:
+    file: ../secrets/wp_db_host
+  wp_db_name:
+    file: ../secrets/wp_db_name
+  wp_admin_user:
+    file: ../secrets/wp_admin_user
+  wp_home:
+    file: ../secrets/wp_home
+  domain_name:
+    file: ../secrets/domain_name
+
+volumes:
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/${USER}/data/mysql
+      o: bind
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/${USER}/data/wordpress
+      o: bind
+
+networks:
+  inception:
+    driver: bridge
