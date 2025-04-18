@@ -50,12 +50,12 @@ jobs:
       
       - name: Build Docker images
         run: |
-          docker compose -f ./srcs/docker-compose.yaml build
+          make build
       
       
       - name: Start containers
         run: |
-          docker compose -f ./srcs/docker-compose.yaml up -d
+          make up
           sleep 30  # Give containers time to start
       
       - name: Check running containers

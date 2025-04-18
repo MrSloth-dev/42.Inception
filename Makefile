@@ -5,7 +5,7 @@ build: datadir
 	docker compose -f ./srcs/docker-compose.yaml build
 
 up: datadir
-	docker compose -f ./srcs/docker-compose.yaml up
+	docker compose -f ./srcs/docker-compose.yaml up -d
 down:
 	docker compose -f ./srcs/docker-compose.yaml down
 
