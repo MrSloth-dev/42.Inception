@@ -47,6 +47,7 @@ jobs:
           echo "$WP_ADMIN_PASSWORD" > secrets/wp_admin_password
           echo "$DB_PASSWORD" > secrets/db_password
           echo "$DB_HOST" > secrets/db_host
+          echo "$REDIS_PASSWORD" > secrets/redis_password
       
       - name: Build Docker images
         run: |
@@ -105,7 +106,34 @@ jobs:
             exit 1
           fi
           echo "NGINX container is running and healthy"
-      
+      - name: Test Redis container
+        run: |
+          REDIS_CONTAINER_ID=$(docker ps -q --filter "name=redis")
+          if [ -z "$REDIS_CONTAINER_ID" ]; then
+            echo "Redis container is not running"
+            exit 1
+          fi
+          HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $REDIS_CONTAINER_ID)
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "Redis container is not healthy: $HEALTH_STATUS"
+            docker logs $REDIS_CONTAINER_ID
+            exit 1
+          fi
+          REDIS_PASSWORD=$(cat secrets/redis_password)
+          if ! docker exec redis redis-cli -a "$REDIS_PASSWORD" ping | grep -q "PONG"; then
+            echo "Redis connection failed"
+            exit 1
+          fi
+          RANDOM_VALUE=$RANDOM
+          docker exec redis redis-cli -a "$REDIS_PASSWORD" set test_key "$RANDOM_VALUE" > /dev/null
+          RETRIEVED_VALUE=$(docker exec redis redis-cli -a "$REDIS_PASSWORD" get test_key)
+          if [ "$RETRIEVED_VALUE" != "$RANDOM_VALUE" ]; then
+            echo "Redis functionality test failed: Values don't match"
+            exit 1
+          fi
+          echo "Redis container is running, healthy, and functional"
+
+
       - name: Stop containers
         run: docker compose -f ./srcs/docker-compose.yaml down -v
         if: always()
