@@ -25,12 +25,12 @@ until mysqladmin ping -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --silent; do
 done
 echo "Database is online"
 
+echo "Wordpress installing"
+wp core install --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_email="$WP_ADMIN_EMAIL" \
+    --admin_password="$WP_ADMIN_PASSWORD" --allow-root
 if [ ! -f "/var/www/html/wp-config.php" ]; then
     echo "Wordpress config"
     wp config create --dbname="$DB_NAME" --dbuser="$DB_USER" --dbpass="$DB_PASSWORD" --dbhost="$DB_HOST" --allow-root
-    echo "Wordpress installing"
-    wp core install --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_email="$WP_ADMIN_EMAIL" \
-        --admin_password="$WP_ADMIN_PASSWORD" --allow-root
     echo "Wordpress installed successfully"
     chown -R www-data:www-data /var/www/html
 else
