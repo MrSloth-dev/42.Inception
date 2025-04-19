@@ -27,8 +27,7 @@ services:
       dockerfile: Dockerfile
     container_name: wordpress
     depends_on:
-      mariadb:
-        condition: service_healthy
+      - mariadb
     restart: always
     volumes:
       - wordpress_data:/var/www/html
@@ -56,8 +55,7 @@ services:
       context: ./requirements/nginx/
       dockerfile: Dockerfile
     depends_on:
-      wordpress:
-        condition: service_healthy
+      - wordpress
     container_name: nginx
     restart: always
     ports:
