@@ -9,17 +9,17 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-          
+
       - name: Create required directories
         run: |
           mkdir -p ~/data/mysql/
           mkdir -p ~/data/wordpress/
           chmod -R 777 ~/data/  # Ensure permissions are set correctly
-      
+
       - name: Create test secrets
         env:
           DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
@@ -60,7 +60,7 @@ jobs:
           make up
           echo "Waiting for containers to initialize (60 seconds)..."
           sleep 60  # Give containers time to start
-      
+
       - name: Check running containers and logs
         run: |
           docker ps
@@ -68,7 +68,7 @@ jobs:
           docker logs wordpress || true
           echo "=== MariaDB Container Logs ==="
           docker logs mariadb || true
-      
+
       - name: Test MariaDB container
         run: |
           MARIADB_CONTAINER_ID=$(docker ps -q --filter "name=mariadb")
@@ -83,7 +83,7 @@ jobs:
             exit 1
           fi
           echo "MariaDB container is running and healthy"
-      
+
       - name: Test WordPress container
         run: |
           WP_CONTAINER_ID=$(docker ps -q --filter "name=wordpress")
@@ -91,14 +91,11 @@ jobs:
             echo "WordPress container is not running"
             exit 1
           fi
-          
-          # Check if container is actually running even if health check is failing
           if [ "$(docker inspect --format='{{.State.Running}}' $WP_CONTAINER_ID)" != "true" ]; then
             echo "WordPress container is not in running state"
             docker logs $WP_CONTAINER_ID
             exit 1
           fi
-          
           if ! docker exec $WP_CONTAINER_ID test -f /var/www/html/wp-config.php; then
             echo "wp-config.php file is missing in WordPress container"
             DB_PASSWORD=$(cat secrets/db_password)
@@ -106,7 +103,6 @@ jobs:
             WP_DB_HOST=$(cat secrets/wp_db_host)
             docker exec $WP_CONTAINER_ID wp config create --dbname=wordpress --dbuser="$DB_USER" --dbpass="$DB_PASSWORD" --dbhost="$WP_DB_HOST" --allow-root
           fi
-          
           HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $WP_CONTAINER_ID)
           if [ "$HEALTH_STATUS" != "healthy" ]; then
             echo "WordPress container has unhealthy status, but we'll continue testing anyway"
@@ -114,12 +110,10 @@ jobs:
           else
             echo "WordPress container is running and healthy"
           fi
-          
           if ! docker exec $WP_CONTAINER_ID pgrep php-fpm > /dev/null; then
             echo "PHP-FPM is not running in WordPress container"
             exit 1
           fi
-          
           echo "WordPress container basic functionality test passed"
       
       - name: Test NGINX container
@@ -141,7 +135,7 @@ jobs:
           else
             echo "NGINX container is running and healthy"
           fi
-          
+
       - name: Test Redis container
         run: |
           REDIS_CONTAINER_ID=$(docker ps -q --filter "name=redis")
@@ -176,6 +170,52 @@ jobs:
             exit 1
           fi
           echo "Redis container is functional"
+
+      - name: Test Adminer container
+        run: |
+          ADMINER_CONTAINER_ID=$(docker ps -q --filter "name=adminer")
+          if [ -z "$ADMINER_CONTAINER_ID" ]; then
+            echo "Adminer container is not running"
+            exit 1
+          fi
+          
+          HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $ADMINER_CONTAINER_ID)
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "Adminer container has unhealthy status, checking if processes are running"
+            if ! docker exec $ADMINER_CONTAINER_ID pgrep php-fpm8 > /dev/null; then
+              echo "PHP-FPM process is not running in Adminer container"
+              docker logs $ADMINER_CONTAINER_ID
+              exit 1
+            fi
+            if ! docker exec $ADMINER_CONTAINER_ID pgrep nginx > /dev/null; then
+              echo "NGINX process is not running in Adminer container"
+              docker logs $ADMINER_CONTAINER_ID
+              exit 1
+            fi
+            echo "Adminer processes are running despite unhealthy status"
+          else
+            echo "Adminer container is running and healthy"
+          fi
+          if ! docker exec $ADMINER_CONTAINER_ID curl -s http://localhost:8080/ | grep -q "Adminer"; then
+            echo "Adminer web interface is not accessible"
+            exit 1
+          fi
+          DB_USER=$(cat secrets/db_user)
+          DB_PASSWORD=$(cat secrets/db_password)
+          docker exec $ADMINER_CONTAINER_ID sh -c "echo '<?php
+          \$conn = new mysqli(\"mariadb\", \"$DB_USER\", \"$DB_PASSWORD\", \"wordpress\");
+          if (\$conn->connect_error) {
+            echo \"Connection failed: \" . \$conn->connect_error;
+            exit(1);
+          }
+          echo \"Connected successfully\";
+          \$conn->close();
+          ?>' > /var/www/html/test-db.php"
+          if ! docker exec $ADMINER_CONTAINER_ID php /var/www/html/test-db.php | grep -q "Connected successfully"; then
+            echo "Adminer cannot connect to MariaDB"
+            exit 1
+          fi
+          echo "Adminer container is functional and can connect to the database"
 
       - name: Stop containers
         run: docker compose -f ./srcs/docker-compose.yaml down -v

@@ -88,6 +88,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+  adminer:
+    image: adminer:42
+    build:
+      context: ./requirements/adminer/
+      dockerfile: Dockerfile
+    container_name: adminer
+    restart: always
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 secrets:
   db_user:
