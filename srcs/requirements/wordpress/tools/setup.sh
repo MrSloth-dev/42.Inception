@@ -21,16 +21,16 @@ REDIS_PASSWORD=$(cat /run/secrets/redis_password)
 echo "Checking Database"
 until mysqladmin ping -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --silent; do
     echo "Waiting for MySQL to start..."
-    sleep 2
+    sleep 5
 done
 echo "Database is online"
 
-echo "Wordpress installing"
-wp core install --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_email="$WP_ADMIN_EMAIL" \
-    --admin_password="$WP_ADMIN_PASSWORD" --allow-root
 if [ ! -f "/var/www/html/wp-config.php" ]; then
-    echo "Wordpress config"
+    echo "wp-config not found, creating Wordpress config"
     wp config create --dbname="$DB_NAME" --dbuser="$DB_USER" --dbpass="$DB_PASSWORD" --dbhost="$DB_HOST" --allow-root
+    echo "Wordpress installing"
+    wp core install --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_email="$WP_ADMIN_EMAIL" \
+        --admin_password="$WP_ADMIN_PASSWORD" --allow-root
     echo "Wordpress installed successfully"
     chown -R www-data:www-data /var/www/html
 else
@@ -43,7 +43,7 @@ else
 fi
 #Stuff related to redis
 wp plugin install redis-cache --activate --allow-root
-wp config set WP_REDIS_PASSWORD "$REDIS_PASSWORD" --allow-root --raw
+wp config set WP_REDIS_PASSWORD "$REDIS_PASSWORD" --allow-root
 wp config set WP_REDIS_HOST redis --allow-root
 wp config set WP_REDIS_PORT 6379 --allow-root
 wp config set WP_REDIS_TIMEOUT 1 --allow-root
