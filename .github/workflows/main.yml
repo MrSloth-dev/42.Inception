@@ -202,7 +202,7 @@ jobs:
           fi
           DB_USER=$(cat secrets/db_user)
           DB_PASSWORD=$(cat secrets/db_password)
-          docker exec $ADMINER_CONTAINER_ID bash -c "echo '<?php
+          docker exec $ADMINER_CONTAINER_ID sh -c "echo '<?php
           \$conn = new mysqli(\"mariadb\", \"$DB_USER\", \"$DB_PASSWORD\", \"wordpress\");
           if (\$conn->connect_error) {
             echo \"Connection failed: \" . \$conn->connect_error;
