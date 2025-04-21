@@ -35,6 +35,9 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_HOST: ${{ secrets.DB_HOST }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PASV_ADDRESS: ${{ secrets.FTP_PASV_ADDRESS }}
         run: |
           mkdir -p secrets
           echo "$DOMAIN_NAME" > secrets/domain_name
@@ -50,6 +53,9 @@ jobs:
           echo "$DB_PASSWORD" > secrets/db_password
           echo "$DB_HOST" > secrets/db_host
           echo "$REDIS_PASSWORD" > secrets/redis_password
+          echo "$FTP_USER" > secrets/ftp_user
+          echo "$FTP_PASSWORD" > secrets/ftp_password
+          echo "$FTP_PASV_ADDRESS" > secrets/pasv_address
       
       - name: Build Docker images
         run: |
@@ -200,6 +206,7 @@ jobs:
             echo "Adminer web interface is not accessible"
             exit 1
           fi
+
           DB_USER=$(cat secrets/db_user)
           DB_PASSWORD=$(cat secrets/db_password)
           docker exec $ADMINER_CONTAINER_ID sh -c "echo '<?php
@@ -216,6 +223,58 @@ jobs:
             exit 1
           fi
           echo "Adminer container is functional and can connect to the database"
+
+
+      - name: Test FTP container
+        run: |
+          FTP_CONTAINER_ID=$(docker ps -q --filter "name=ftp")
+          if [ -z "$FTP_CONTAINER_ID" ]; then
+            echo "FTP container is not running"
+            exit 1
+          fi
+
+          if ! docker exec $FTP_CONTAINER_ID pgrep vsftpd > /dev/null; then
+            echo "vsftpd process is not running in FTP container"
+            docker logs $FTP_CONTAINER_ID
+            exit 1
+          fi
+
+          if ! docker exec $FTP_CONTAINER_ID netstat -tuln | grep -q ":21.*LISTEN"; then
+            echo "FTP container is not listening on port 21"
+            docker logs $FTP_CONTAINER_ID
+            exit 1
+
+
+          echo "FTP container is running and the process is active"
+
+          echo "This is a test file for FTP upload from GitHub Actions" > test_upload.txt
+
+          apt-get update && apt-get install -y ftp curl
+
+          FTP_USER=$(cat secrets/ftp_user)
+          FTP_PASSWORD=$(cat secrets/ftp_password)
+
+          if ! curl -s --connect-timeout 10 -u "$FTP_USER:$FTP_PASSWORD" ftp://localhost/ > ftp_listing.txt; then
+            echo "Failed to connect to FTP server"
+            cat ftp_listing.txt
+            exit 1
+          fi
+
+          if ! curl -s --connect-timeout 10 -T test_upload.txt -u "$FTP_USER:$FTP_PASSWORD" ftp://localhost/; then
+            echo "Failed to upload file to FTP server"
+            exit 1
+          fi
+
+          if ! curl -s --connect-timeout 10 -u "$FTP_USER:$FTP_PASSWORD" ftp://localhost/ | grep -q "test_upload.txt"; then
+            echo "Uploaded file not found in FTP directory listing"
+            exit 1
+          fi
+
+          if ! docker exec wordpress ls -la /var/www/html/ | grep -q "test_upload.txt"; then
+            echo "FTP uploaded file not found in WordPress volume"
+            exit 1
+          fi
+          echo "FTP container test successfully completed"
 
       - name: Stop containers
         run: docker compose -f ./srcs/docker-compose.yaml down -v
