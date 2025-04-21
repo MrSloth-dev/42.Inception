@@ -37,7 +37,6 @@ jobs:
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_PASV_ADDRESS: ${{ secrets.FTP_PASV_ADDRESS }}
         run: |
           mkdir -p secrets
           echo "$DOMAIN_NAME" > secrets/domain_name
@@ -55,7 +54,6 @@ jobs:
           echo "$REDIS_PASSWORD" > secrets/redis_password
           echo "$FTP_USER" > secrets/ftp_user
           echo "$FTP_PASSWORD" > secrets/ftp_password
-          echo "$FTP_PASV_ADDRESS" > secrets/pasv_address
       
       - name: Build Docker images
         run: |
