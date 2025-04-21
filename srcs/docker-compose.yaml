@@ -102,6 +102,31 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+  ftp:
+    image: ftp:42
+    build:
+      context: ./requirements/ftp/
+      dockerfile: Dockerfile
+    container_name: ftp
+    restart: always
+    depends_on:
+      - wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+    ports:
+      - "21:21"
+      - "21100-21110:21100-21110"
+    networks:
+      - inception
+    secrets:
+      - ftp_password
+      - ftp_user
+      - ftp_pasv_address
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 secrets:
   db_user:
@@ -130,6 +155,12 @@ secrets:
     file: ../secrets/wp_home
   domain_name:
     file: ../secrets/domain_name
+  ftp_user:
+    file: ../secrets/ftp_user
+  ftp_password:
+    file: ../secrets/ftp_password
+  ftp_pasv_address:
+    file: ../secrets/ftp_pasv_address
 
 volumes:
   mariadb_data:
