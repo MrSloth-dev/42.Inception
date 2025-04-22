@@ -250,7 +250,7 @@ jobs:
 
           echo "This is a test file for FTP upload from GitHub Actions" > test_upload.txt
 
-          apt-get update && apt-get install -y ftp curl
+          sudo apt-get update && sudo apt-get install -y ftp curl
 
           FTP_USER=$(cat secrets/ftp_user)
           FTP_PASSWORD=$(cat secrets/ftp_password)
