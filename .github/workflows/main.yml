@@ -243,6 +243,7 @@ jobs:
             echo "FTP container is not listening on port 21"
             docker logs $FTP_CONTAINER_ID
             exit 1
+          fi
 
 
           echo "FTP container is running and the process is active"

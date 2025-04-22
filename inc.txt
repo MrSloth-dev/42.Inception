@@ -1,0 +1,751 @@
+Makefile:all: build
+Makefile:build: datadir
+Makefile:	docker compose -f ./srcs/docker-compose.yaml build
+Makefile:up: datadir
+Makefile:	docker compose -f ./srcs/docker-compose.yaml up -d
+Makefile:down:
+Makefile:	docker compose -f ./srcs/docker-compose.yaml down
+Makefile:datadir:
+Makefile:	@mkdir -p ~/data/mysql/
+Makefile:	@mkdir -p ~/data/wordpress/
+Makefile:re:
+Makefile:	docker compose -f ./srcs/docker-compose.yaml up --build
+Makefile:clean:
+Makefile:	docker compose -f ./srcs/docker-compose.yaml down -v
+Makefile:	docker system prune --all
+Makefile:.PHONY: all build up datadir down clean re
+README.md:# Inception
+README.md:A Docker infrastructure project that creates a small virtualized environment with multiple services.
+README.md:## Core Services
+README.md:- **NGINX**: Web server with TLSv1.2/TLSv1.3 configuration
+README.md:- **WordPress**: Content management system with PHP-FPM
+README.md:- **MariaDB**: Database server
+README.md:## Bonus Services
+README.md:- **Redis**: Caching system for WordPress
+README.md:- **Adminer**: Database management tool
+README.md:- **FTP Server**: File Transfer Protocol service
+README.md:- **Prometheus + Grafana**: Monitoring stack
+README.md:- **Static Website**: Simple static site
+README.md:## Project Structure
+README.md:```
+README.md:.
+README.md:├── Makefile
+README.md:├── secrets/           # Contains all sensitive information
+README.md:└── srcs/
+README.md:    ├── docker-compose.yaml
+README.md:    └── requirements/
+README.md:        ├── mariadb/
+README.md:        ├── nginx/
+README.md:        ├── wordpress/
+README.md:        ├── redis/      # Bonus
+README.md:        ├── adminer/    # Bonus
+README.md:        ├── ftp/        # Bonus
+README.md:        ├── prometheus/ # Bonus
+README.md:        ├── grafana/    # Bonus
+README.md:        └── website/    # Bonus
+README.md:```
+README.md:## Usage
+README.md:```bash
+README.md:# Build all containers
+README.md:make build
+README.md:# Start services
+README.md:make up
+README.md:# Stop services
+README.md:make down
+README.md:# Clean all containers and volumes
+README.md:make clean
+README.md:```
+README.md:## Volumes
+README.md:The project uses persistent volumes for:
+README.md:- MariaDB data
+README.md:- WordPress files
+README.md:## Network
+README.md:All services communicate through an internal Docker network called "inception".
+README.md:## Security
+README.md:- No passwords in Dockerfiles
+README.md:- Environment variables for configuration
+README.md:- Docker secrets for sensitive data
+README.md:- TLS encryption for web traffic
+README.md:## Notes
+README.md:- NGINX is the only entry point to the infrastructure via port 443
+README.md:- All containers restart automatically in case of a crash
+srcs/requirements/mariadb/Dockerfile:FROM debian:bullseye-slim
+srcs/requirements/mariadb/Dockerfile:RUN apt-get update && apt-get install -y \
+srcs/requirements/mariadb/Dockerfile:	mariadb-server \
+srcs/requirements/mariadb/Dockerfile:	mariadb-client;
+srcs/requirements/mariadb/Dockerfile:RUN apt-get clean \
+srcs/requirements/mariadb/Dockerfile:	&& rm -rf /var/lib/apt/lists/*;
+srcs/requirements/mariadb/Dockerfile:RUN mkdir -p /var/run/mysqld && \
+srcs/requirements/mariadb/Dockerfile:	chown -R mysql:mysql /var/run/mysqld && \
+srcs/requirements/mariadb/Dockerfile:	chown -R mysql:mysql /var/lib/mysql;
+srcs/requirements/mariadb/Dockerfile:RUN mkdir -p /home/${USER}/data/mysql;
+srcs/requirements/mariadb/Dockerfile:RUN mkdir -p /home/${USER}/data/wordpress;
+srcs/requirements/mariadb/Dockerfile:COPY ./tools/healthcheck.sh /usr/local/bin/healthcheck.sh
+srcs/requirements/mariadb/Dockerfile:COPY /conf/my.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
+srcs/requirements/mariadb/Dockerfile:COPY ./tools/setup.sh /usr/local/bin/setup.sh
+srcs/requirements/mariadb/Dockerfile:RUN chmod +x /usr/local/bin/healthcheck.sh
+srcs/requirements/mariadb/Dockerfile:RUN chmod +x /usr/local/bin/setup.sh
+srcs/requirements/mariadb/Dockerfile:EXPOSE 3306
+srcs/requirements/mariadb/Dockerfile:ENTRYPOINT [ "setup.sh" ]
+srcs/requirements/redis/tools/setup.sh:#!/bin/sh
+srcs/requirements/redis/tools/setup.sh:set -e
+srcs/requirements/redis/tools/setup.sh:cleanup () {
+srcs/requirements/redis/tools/setup.sh:    unset REDIS_PASSWORD
+srcs/requirements/redis/tools/setup.sh:}
+srcs/requirements/redis/tools/setup.sh:trap cleanup EXIT
+srcs/requirements/redis/tools/setup.sh:REDIS_PASSWORD=$(cat /run/secrets/redis_password)
+srcs/requirements/redis/tools/setup.sh:cp /etc/redis.conf /etc/redis.custom.conf
+srcs/requirements/redis/tools/setup.sh:echo "requirepass ${REDIS_PASSWORD}" >> /etc/redis.custom.conf 
+srcs/requirements/redis/tools/setup.sh:echo $REDIS_PASSWORD
+srcs/requirements/redis/tools/setup.sh:exec redis-server /etc/redis.custom.conf
+srcs/requirements/mariadb/tools/setup.sh:#!/usr/bin/env bash
+srcs/requirements/mariadb/tools/setup.sh:set -eo pipefail
+srcs/requirements/mariadb/tools/setup.sh:cleanup () {
+srcs/requirements/mariadb/tools/setup.sh:    unset DB_PASSWORD DB_USER DB_ROOT_PASSWORD
+srcs/requirements/mariadb/tools/setup.sh:}
+srcs/requirements/mariadb/tools/setup.sh:trap cleanup EXIT
+srcs/requirements/mariadb/tools/setup.sh:DB_PASSWORD=$(cat /run/secrets/db_password)
+srcs/requirements/mariadb/tools/setup.sh:DB_ROOT_PASSWORD=$(cat /run/secrets/db_root_password)
+srcs/requirements/mariadb/tools/setup.sh:DB_USER=$(cat /run/secrets/db_user)
+srcs/requirements/mariadb/tools/setup.sh:echo "Initializing MySQL data directory...."
+srcs/requirements/mariadb/tools/setup.sh:mysqld &
+srcs/requirements/mariadb/tools/setup.sh:MYSQLPID=$!
+srcs/requirements/mariadb/tools/setup.sh:chown -R mysql:mysql /var/lib/mysql
+srcs/requirements/mariadb/tools/setup.sh:until mysqladmin --user=root -p$DB_ROOT_PASSWORD ping -h localhost --silent; do
+srcs/requirements/mariadb/tools/setup.sh:    echo "Waiting for MySQL to start..."
+srcs/requirements/mariadb/tools/setup.sh:    sleep 2
+srcs/requirements/mariadb/tools/setup.sh:done
+srcs/requirements/mariadb/tools/setup.sh:echo "Script into mysql"
+srcs/requirements/mariadb/tools/setup.sh:mysql -u root --password=$DB_ROOT_PASSWORD<<EOF
+srcs/requirements/mariadb/tools/setup.sh:CREATE DATABASE IF NOT EXISTS wordpress;
+srcs/requirements/mariadb/tools/setup.sh:CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
+srcs/requirements/mariadb/tools/setup.sh:GRANT ALL PRIVILEGES ON *.* TO '$DB_USER'@'%';
+srcs/requirements/mariadb/tools/setup.sh:ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_ROOT_PASSWORD';
+srcs/requirements/mariadb/tools/setup.sh:FLUSH PRIVILEGES;
+srcs/requirements/mariadb/tools/setup.sh:EOF
+srcs/requirements/mariadb/tools/setup.sh:echo "Changing permissions of data dir"
+srcs/requirements/mariadb/tools/setup.sh:find /var/lib/mysql -type d -exec chmod 750 {} \;
+srcs/requirements/mariadb/tools/setup.sh:find /var/lib/mysql -type f -exec chmod 640 {} \;
+srcs/requirements/mariadb/tools/setup.sh:echo "Shutdown with mysqladmin"
+srcs/requirements/mariadb/tools/setup.sh:mysqladmin -u root -p$DB_ROOT_PASSWORD shutdown
+srcs/requirements/mariadb/tools/setup.sh:wait $MYSQLPID
+srcs/requirements/mariadb/tools/setup.sh:echo "Exec mysqld as PID 1"
+srcs/requirements/mariadb/tools/setup.sh:exec mysqld
+srcs/requirements/redis/tools/healthcheck.sh:#!/bin/sh
+srcs/requirements/redis/tools/healthcheck.sh:set -e
+srcs/requirements/redis/tools/healthcheck.sh:cleanup () {
+srcs/requirements/redis/tools/healthcheck.sh:    unset REDIS_PASSWORD
+srcs/requirements/redis/tools/healthcheck.sh:}
+srcs/requirements/redis/tools/healthcheck.sh:trap cleanup EXIT
+srcs/requirements/redis/tools/healthcheck.sh:REDIS_PASSWORD=$(cat /run/secrets/redis_password)
+srcs/requirements/redis/tools/healthcheck.sh:if ! pgrep redis-server > /dev/null; then
+srcs/requirements/redis/tools/healthcheck.sh:    echo "Error: Redis server is not running"
+srcs/requirements/redis/tools/healthcheck.sh:    exit 1;
+srcs/requirements/redis/tools/healthcheck.sh:fi
+srcs/requirements/redis/tools/healthcheck.sh:if ! redis-cli -a "$REDIS_PASSWORD" ping | grep -q "PONG"; then
+srcs/requirements/redis/tools/healthcheck.sh:    echo "Error: Redis server is not responding correctly"
+srcs/requirements/redis/tools/healthcheck.sh:    exit 1;
+srcs/requirements/redis/tools/healthcheck.sh:fi
+srcs/requirements/redis/tools/healthcheck.sh:echo "Redis container is healthy"
+srcs/requirements/redis/tools/healthcheck.sh:exit 0
+srcs/requirements/mariadb/tools/healthcheck.sh:#!/bin/bash
+srcs/requirements/mariadb/tools/healthcheck.sh:set -eo pipefail
+srcs/requirements/mariadb/tools/healthcheck.sh:DB_ROOT_PASSWORD=$(cat /run/secrets/db_root_password)
+srcs/requirements/mariadb/tools/healthcheck.sh:mysqladmin ping -h localhost -u root -p"$DB_ROOT_PASSWORD" --silent
+srcs/requirements/ftp/Dockerfile:FROM alpine:3.16
+srcs/requirements/ftp/Dockerfile:RUN apk update && apk add --no-cache \
+srcs/requirements/ftp/Dockerfile:    vsftpd \
+srcs/requirements/ftp/Dockerfile:    bash \
+srcs/requirements/ftp/Dockerfile:    netcat-openbsd \
+srcs/requirements/ftp/Dockerfile:    && rm -fr /var/cache/apk/*;
+srcs/requirements/ftp/Dockerfile:RUN mkdir -p /var/run/vsftpd/empty \
+srcs/requirements/ftp/Dockerfile:    && mkdir -p /var/ftp/pub
+srcs/requirements/ftp/Dockerfile:COPY ./conf/vsftpd.conf /etc/vsftpd/vsftpd.conf
+srcs/requirements/ftp/Dockerfile:COPY ./tools/healthcheck.sh /usr/local/bin/healthcheck.sh
+srcs/requirements/ftp/Dockerfile:RUN chmod u+x usr/local/bin/healthcheck.sh 
+srcs/requirements/ftp/Dockerfile:COPY ./tools/setup.sh /usr/local/bin/setup.sh
+srcs/requirements/ftp/Dockerfile:RUN chmod u+x usr/local/bin/setup.sh 
+srcs/requirements/ftp/Dockerfile:EXPOSE 20 21 21100-21110
+srcs/requirements/ftp/Dockerfile:CMD [ "/usr/local/bin/setup.sh" ] 
+srcs/requirements/redis/conf/redis.conf:bind 0.0.0.0
+srcs/requirements/redis/conf/redis.conf:protected-mode yes
+srcs/requirements/redis/conf/redis.conf:port 6379
+srcs/requirements/redis/conf/redis.conf:tcp-backlog 511
+srcs/requirements/redis/conf/redis.conf:timeout 0
+srcs/requirements/redis/conf/redis.conf:tcp-keepalive 300
+srcs/requirements/redis/conf/redis.conf:daemonize no
+srcs/requirements/redis/conf/redis.conf:supervised no
+srcs/requirements/redis/conf/redis.conf:pidfile /var/run/redis_6379.pid
+srcs/requirements/redis/conf/redis.conf:loglevel notice
+srcs/requirements/redis/conf/redis.conf:logfile ""
+srcs/requirements/redis/conf/redis.conf:databases 16
+srcs/requirements/redis/conf/redis.conf:always-show-logo yes
+srcs/requirements/redis/conf/redis.conf:save 900 1
+srcs/requirements/redis/conf/redis.conf:save 300 10
+srcs/requirements/redis/conf/redis.conf:save 60 10000
+srcs/requirements/redis/conf/redis.conf:stop-writes-on-bgsave-error yes
+srcs/requirements/redis/conf/redis.conf:rdbcompression yes
+srcs/requirements/redis/conf/redis.conf:rdbchecksum yes
+srcs/requirements/redis/conf/redis.conf:maxmemory 256mb
+srcs/requirements/redis/conf/redis.conf:maxmemory-policy allkeys-lru
+srcs/docker-compose.yaml:---
+srcs/docker-compose.yaml:services:
+srcs/docker-compose.yaml:  mariadb:
+srcs/docker-compose.yaml:    image: mariadb:42
+srcs/docker-compose.yaml:    build:
+srcs/docker-compose.yaml:      context: ./requirements/mariadb/
+srcs/docker-compose.yaml:      dockerfile: Dockerfile
+srcs/docker-compose.yaml:    container_name: mariadb
+srcs/docker-compose.yaml:    restart: always
+srcs/docker-compose.yaml:    volumes:
+srcs/docker-compose.yaml:      - mariadb_data:/var/lib/mysql
+srcs/docker-compose.yaml:    networks:
+srcs/docker-compose.yaml:      - inception
+srcs/docker-compose.yaml:    secrets:
+srcs/docker-compose.yaml:    - db_user
+srcs/docker-compose.yaml:    - db_password
+srcs/docker-compose.yaml:    - db_root_password
+srcs/docker-compose.yaml:    healthcheck:
+srcs/docker-compose.yaml:      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+srcs/docker-compose.yaml:      interval: 10s
+srcs/docker-compose.yaml:      timeout: 5s
+srcs/docker-compose.yaml:      retries: 3
+srcs/docker-compose.yaml:  wordpress:
+srcs/docker-compose.yaml:    image: wordpress:42
+srcs/docker-compose.yaml:    build:
+srcs/docker-compose.yaml:      context: ./requirements/wordpress/
+srcs/docker-compose.yaml:      dockerfile: Dockerfile
+srcs/docker-compose.yaml:    container_name: wordpress
+srcs/docker-compose.yaml:    depends_on:
+srcs/docker-compose.yaml:      - mariadb
+srcs/docker-compose.yaml:    restart: always
+srcs/docker-compose.yaml:    volumes:
+srcs/docker-compose.yaml:      - wordpress_data:/var/www/html
+srcs/docker-compose.yaml:    networks:
+srcs/docker-compose.yaml:      - inception
+srcs/docker-compose.yaml:    secrets:
+srcs/docker-compose.yaml:      - redis_password
+srcs/docker-compose.yaml:      - db_password
+srcs/docker-compose.yaml:      - db_user
+srcs/docker-compose.yaml:      - wp_db_host
+srcs/docker-compose.yaml:      - wp_admin_user
+srcs/docker-compose.yaml:      - wp_admin_password
+srcs/docker-compose.yaml:      - wp_admin_email
+srcs/docker-compose.yaml:      - wp_url
+srcs/docker-compose.yaml:      - domain_name
+srcs/docker-compose.yaml:    healthcheck:
+srcs/docker-compose.yaml:      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+srcs/docker-compose.yaml:      interval: 10s
+srcs/docker-compose.yaml:      timeout: 5s
+srcs/docker-compose.yaml:      retries: 3
+srcs/docker-compose.yaml:  nginx:
+srcs/docker-compose.yaml:    image: nginx:42
+srcs/docker-compose.yaml:    build:
+srcs/docker-compose.yaml:      context: ./requirements/nginx/
+srcs/docker-compose.yaml:      dockerfile: Dockerfile
+srcs/docker-compose.yaml:    depends_on:
+srcs/docker-compose.yaml:      - wordpress
+srcs/docker-compose.yaml:    container_name: nginx
+srcs/docker-compose.yaml:    restart: always
+srcs/docker-compose.yaml:    ports:
+srcs/docker-compose.yaml:      - "443:443"
+srcs/docker-compose.yaml:    secrets:
+srcs/docker-compose.yaml:      - domain_name
+srcs/docker-compose.yaml:    volumes:
+srcs/docker-compose.yaml:      - wordpress_data:/var/www/html
+srcs/docker-compose.yaml:    networks:
+srcs/docker-compose.yaml:      - inception
+srcs/docker-compose.yaml:    healthcheck:
+srcs/docker-compose.yaml:      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+srcs/docker-compose.yaml:      interval: 30s
+srcs/docker-compose.yaml:      timeout: 10s
+srcs/docker-compose.yaml:      retries: 1
+srcs/docker-compose.yaml:      start_period: 30s
+srcs/docker-compose.yaml:  redis:
+srcs/docker-compose.yaml:    image: redis:42
+srcs/docker-compose.yaml:    build:
+srcs/docker-compose.yaml:      context: ./requirements/redis/
+srcs/docker-compose.yaml:      dockerfile: Dockerfile
+srcs/docker-compose.yaml:    container_name: redis
+srcs/docker-compose.yaml:    restart: always
+srcs/docker-compose.yaml:    networks:
+srcs/docker-compose.yaml:      - inception
+srcs/docker-compose.yaml:    secrets:
+srcs/docker-compose.yaml:      - redis_password
+srcs/docker-compose.yaml:    healthcheck:
+srcs/docker-compose.yaml:      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+srcs/docker-compose.yaml:      interval: 10s
+srcs/docker-compose.yaml:      timeout: 5s
+srcs/docker-compose.yaml:      retries: 3
+srcs/docker-compose.yaml:  adminer:
+srcs/docker-compose.yaml:    image: adminer:42
+srcs/docker-compose.yaml:    build:
+srcs/docker-compose.yaml:      context: ./requirements/adminer/
+srcs/docker-compose.yaml:      dockerfile: Dockerfile
+srcs/docker-compose.yaml:    container_name: adminer
+srcs/docker-compose.yaml:    restart: always
+srcs/docker-compose.yaml:    networks:
+srcs/docker-compose.yaml:      - inception
+srcs/docker-compose.yaml:    healthcheck:
+srcs/docker-compose.yaml:      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+srcs/docker-compose.yaml:      interval: 10s
+srcs/docker-compose.yaml:      timeout: 5s
+srcs/docker-compose.yaml:      retries: 3
+srcs/docker-compose.yaml:  ftp:
+srcs/docker-compose.yaml:    image: ftp:42
+srcs/docker-compose.yaml:    build:
+srcs/docker-compose.yaml:      context: ./requirements/ftp/
+srcs/docker-compose.yaml:      dockerfile: Dockerfile
+srcs/docker-compose.yaml:    container_name: ftp
+srcs/docker-compose.yaml:    restart: always
+srcs/docker-compose.yaml:    depends_on:
+srcs/docker-compose.yaml:      - wordpress
+srcs/docker-compose.yaml:    volumes:
+srcs/docker-compose.yaml:      - wordpress_data:/var/www/html
+srcs/docker-compose.yaml:    ports:
+srcs/docker-compose.yaml:      - "21:21"
+srcs/docker-compose.yaml:      - "21100-21110:21100-21110"
+srcs/docker-compose.yaml:    networks:
+srcs/docker-compose.yaml:      - inception
+srcs/docker-compose.yaml:    secrets:
+srcs/docker-compose.yaml:      - ftp_password
+srcs/docker-compose.yaml:      - ftp_user
+srcs/docker-compose.yaml:      - ftp_pasv_address
+srcs/docker-compose.yaml:    healthcheck:
+srcs/docker-compose.yaml:      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+srcs/docker-compose.yaml:      interval: 10s
+srcs/docker-compose.yaml:      timeout: 5s
+srcs/docker-compose.yaml:      retries: 3
+srcs/docker-compose.yaml:secrets:
+srcs/docker-compose.yaml:  db_user:
+srcs/docker-compose.yaml:    file: ../secrets/db_user
+srcs/docker-compose.yaml:  db_password:
+srcs/docker-compose.yaml:    file: ../secrets/db_password
+srcs/docker-compose.yaml:  db_root_password:
+srcs/docker-compose.yaml:    file: ../secrets/db_root_password
+srcs/docker-compose.yaml:  db_host:
+srcs/docker-compose.yaml:    file: ../secrets/db_host
+srcs/docker-compose.yaml:  wp_url:
+srcs/docker-compose.yaml:    file: ../secrets/wp_url
+srcs/docker-compose.yaml:  wp_admin_email:
+srcs/docker-compose.yaml:    file: ../secrets/wp_admin_email
+srcs/docker-compose.yaml:  wp_admin_password:
+srcs/docker-compose.yaml:    file: ../secrets/wp_admin_password
+srcs/docker-compose.yaml:  redis_password:
+srcs/docker-compose.yaml:    file: ../secrets/redis_password
+srcs/docker-compose.yaml:  wp_db_host:
+srcs/docker-compose.yaml:    file: ../secrets/wp_db_host
+srcs/docker-compose.yaml:  wp_db_name:
+srcs/docker-compose.yaml:    file: ../secrets/wp_db_name
+srcs/docker-compose.yaml:  wp_admin_user:
+srcs/docker-compose.yaml:    file: ../secrets/wp_admin_user
+srcs/docker-compose.yaml:  wp_home:
+srcs/docker-compose.yaml:    file: ../secrets/wp_home
+srcs/docker-compose.yaml:  domain_name:
+srcs/docker-compose.yaml:    file: ../secrets/domain_name
+srcs/docker-compose.yaml:  ftp_user:
+srcs/docker-compose.yaml:    file: ../secrets/ftp_user
+srcs/docker-compose.yaml:  ftp_password:
+srcs/docker-compose.yaml:    file: ../secrets/ftp_password
+srcs/docker-compose.yaml:  ftp_pasv_address:
+srcs/docker-compose.yaml:    file: ../secrets/ftp_pasv_address
+srcs/docker-compose.yaml:volumes:
+srcs/docker-compose.yaml:  mariadb_data:
+srcs/docker-compose.yaml:    driver: local
+srcs/docker-compose.yaml:    driver_opts:
+srcs/docker-compose.yaml:      type: none
+srcs/docker-compose.yaml:      device: /home/${USER}/data/mysql
+srcs/docker-compose.yaml:      o: bind
+srcs/docker-compose.yaml:  wordpress_data:
+srcs/docker-compose.yaml:    driver: local
+srcs/docker-compose.yaml:    driver_opts:
+srcs/docker-compose.yaml:      type: none
+srcs/docker-compose.yaml:      device: /home/${USER}/data/wordpress
+srcs/docker-compose.yaml:      o: bind
+srcs/docker-compose.yaml:networks:
+srcs/docker-compose.yaml:  inception:
+srcs/docker-compose.yaml:    driver: bridge
+srcs/requirements/mariadb/conf/my.cnf:[server]
+srcs/requirements/mariadb/conf/my.cnf:[mysqld]
+srcs/requirements/mariadb/conf/my.cnf:user                    = mysql
+srcs/requirements/mariadb/conf/my.cnf:pid-file                = /run/mysqld/mysqld.pid
+srcs/requirements/mariadb/conf/my.cnf:basedir                 = /usr
+srcs/requirements/mariadb/conf/my.cnf:datadir                 = /var/lib/mysql
+srcs/requirements/mariadb/conf/my.cnf:tmpdir                  = /tmp
+srcs/requirements/mariadb/conf/my.cnf:lc-messages-dir         = /usr/share/mysql
+srcs/requirements/mariadb/conf/my.cnf:skip-external-locking
+srcs/requirements/mariadb/conf/my.cnf:lc-messages             = en_US
+srcs/requirements/mariadb/conf/my.cnf:bind-address            = 0.0.0.0
+srcs/requirements/mariadb/conf/my.cnf:# init_file = /etc/mysql/init.sql
+srcs/requirements/mariadb/conf/my.cnf:expire_logs_days        = 10
+srcs/requirements/mariadb/conf/my.cnf:max_connections = 200
+srcs/requirements/mariadb/conf/my.cnf:max_allowed_packet = 16M
+srcs/requirements/mariadb/conf/my.cnf:character-set-server  = utf8mb4
+srcs/requirements/mariadb/conf/my.cnf:collation-server      = utf8mb4_general_ci
+srcs/requirements/mariadb/conf/my.cnf:[embedded]
+srcs/requirements/mariadb/conf/my.cnf:[mariadb]
+srcs/requirements/mariadb/conf/my.cnf:[mariadb-10.5]
+srcs/requirements/redis/Dockerfile:FROM alpine:3.16
+srcs/requirements/redis/Dockerfile:RUN apk update && apk add --no-cache \
+srcs/requirements/redis/Dockerfile:		redis \
+srcs/requirements/redis/Dockerfile:		&& rm -fr /var/cache/apk/*
+srcs/requirements/redis/Dockerfile:COPY ./conf/redis.conf /etc/redis.conf
+srcs/requirements/redis/Dockerfile:COPY ./tools/healthcheck.sh /usr/local/bin/healthcheck.sh
+srcs/requirements/redis/Dockerfile:RUN chmod u+x usr/local/bin/healthcheck.sh 
+srcs/requirements/redis/Dockerfile:COPY ./tools/setup.sh /usr/local/bin/setup.sh
+srcs/requirements/redis/Dockerfile:RUN chmod u+x usr/local/bin/setup.sh 
+srcs/requirements/redis/Dockerfile:EXPOSE 6379
+srcs/requirements/redis/Dockerfile:CMD ["/usr/local/bin/setup.sh"]
+srcs/requirements/nginx/Dockerfile:FROM debian:bullseye-slim
+srcs/requirements/nginx/Dockerfile:RUN apt-get update && apt-get install -y \
+srcs/requirements/nginx/Dockerfile:	nginx \
+srcs/requirements/nginx/Dockerfile:	openssl \
+srcs/requirements/nginx/Dockerfile:	procps \
+srcs/requirements/nginx/Dockerfile:	net-tools;
+srcs/requirements/nginx/Dockerfile:RUN apt-get install -y wget;
+srcs/requirements/nginx/Dockerfile:RUN apt-get install -y curl;
+srcs/requirements/nginx/Dockerfile:RUN apt-get clean \
+srcs/requirements/nginx/Dockerfile:	&& rm -rf /var/lib/apt/lists/*;
+srcs/requirements/nginx/Dockerfile:RUN mkdir -p /etc/nginx/ssl;
+srcs/requirements/nginx/Dockerfile:RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+srcs/requirements/nginx/Dockerfile:	-keyout /etc/nginx/ssl/nginx.key \ 
+srcs/requirements/nginx/Dockerfile:	-out /etc/nginx/ssl/nginx.crt \ 
+srcs/requirements/nginx/Dockerfile:	-subj "/C=PT/ST=Porto/L=Porto/O=42porto/CN=joao-pol.42.fr"
+srcs/requirements/nginx/Dockerfile:COPY /conf/nginx.conf /etc/nginx/nginx.conf
+srcs/requirements/nginx/Dockerfile:COPY /conf/default.conf /etc/nginx/conf.d/default.conf
+srcs/requirements/nginx/Dockerfile:COPY /conf/adminer.conf /etc/nginx/conf.d/adminer.conf
+srcs/requirements/nginx/Dockerfile:RUN mkdir -p /var/run/nginx;
+srcs/requirements/nginx/Dockerfile:COPY /tools/healthcheck.sh /usr/local/bin/healthcheck.sh
+srcs/requirements/nginx/Dockerfile:RUN chmod +x /usr/local/bin/healthcheck.sh
+srcs/requirements/nginx/Dockerfile:EXPOSE 443
+srcs/requirements/nginx/Dockerfile:ENTRYPOINT [ "nginx", "-g", "daemon off;" ]
+srcs/requirements/nginx/tools/healthcheck.sh:#!/bin/bash
+srcs/requirements/nginx/tools/healthcheck.sh:set -e
+srcs/requirements/nginx/tools/healthcheck.sh:if ! pgrep -x "nginx" > /dev/null; then
+srcs/requirements/nginx/tools/healthcheck.sh:    echo "Error: nginx is not running"
+srcs/requirements/nginx/tools/healthcheck.sh:    exit 1
+srcs/requirements/nginx/tools/healthcheck.sh:fi
+srcs/requirements/nginx/tools/healthcheck.sh:if ! netstat -tunl | grep -q "443.*LISTEN"; then
+srcs/requirements/nginx/tools/healthcheck.sh:    echo "Port 443 in not set for listen"
+srcs/requirements/nginx/tools/healthcheck.sh:    exit 1
+srcs/requirements/nginx/tools/healthcheck.sh:fi
+srcs/requirements/nginx/tools/healthcheck.sh:if ! nginx -t &>/dev/null; then
+srcs/requirements/nginx/tools/healthcheck.sh:    echo "Error: nginx configuration is not valid"
+srcs/requirements/nginx/tools/healthcheck.sh:    exit 1
+srcs/requirements/nginx/tools/healthcheck.sh:fi
+srcs/requirements/nginx/tools/healthcheck.sh:echo "NGINX container is healthy"
+srcs/requirements/nginx/tools/healthcheck.sh:exit 0
+srcs/requirements/adminer/Dockerfile:FROM alpine:3.16
+srcs/requirements/adminer/Dockerfile:RUN apk update && apk add --no-cache \
+srcs/requirements/adminer/Dockerfile:		php8 \
+srcs/requirements/adminer/Dockerfile:		php8-session \
+srcs/requirements/adminer/Dockerfile:		php8-mysqli \
+srcs/requirements/adminer/Dockerfile:		php8-pdo \
+srcs/requirements/adminer/Dockerfile:		php8-pdo_mysql \
+srcs/requirements/adminer/Dockerfile:		php8-json \
+srcs/requirements/adminer/Dockerfile:		php8-mbstring \
+srcs/requirements/adminer/Dockerfile:		nginx \
+srcs/requirements/adminer/Dockerfile:		php8-fpm;
+srcs/requirements/adminer/Dockerfile:RUN apk add --no-cache curl;
+srcs/requirements/adminer/Dockerfile:RUN rm -fr /var/cache/apk/*;
+srcs/requirements/adminer/Dockerfile:RUN mkdir -p /var/run/php;
+srcs/requirements/adminer/Dockerfile:RUN sed -i 's/listen = 127.0.0.1:9000/listen = 0.0.0.0:9000/g' /etc/php8/php-fpm.d/www.conf;
+srcs/requirements/adminer/Dockerfile:RUN mkdir -p /var/www/html && \
+srcs/requirements/adminer/Dockerfile:    curl -L https://github.com/vrana/adminer/releases/download/v4.8.1/adminer-4.8.1.php -o /var/www/html/index.php;
+srcs/requirements/adminer/Dockerfile:COPY ./conf/nginx.conf /etc/nginx/http.d/default.conf
+srcs/requirements/adminer/Dockerfile:COPY ./tools/healthcheck.sh /usr/local/bin/healthcheck.sh
+srcs/requirements/adminer/Dockerfile:RUN chmod u+x usr/local/bin/healthcheck.sh 
+srcs/requirements/adminer/Dockerfile:COPY ./tools/setup.sh /usr/local/bin/setup.sh
+srcs/requirements/adminer/Dockerfile:RUN chmod u+x usr/local/bin/setup.sh 
+srcs/requirements/adminer/Dockerfile:EXPOSE 8080
+srcs/requirements/adminer/Dockerfile:CMD [ "/usr/local/bin/setup.sh" ] 
+srcs/requirements/wordpress/Dockerfile:FROM debian:bullseye-slim
+srcs/requirements/wordpress/Dockerfile:RUN apt-get update && apt-get install -y \
+srcs/requirements/wordpress/Dockerfile:	net-tools \
+srcs/requirements/wordpress/Dockerfile:	php7.4-fpm \
+srcs/requirements/wordpress/Dockerfile:	php7.4-sqli \
+srcs/requirements/wordpress/Dockerfile:	php7.4-mysql \
+srcs/requirements/wordpress/Dockerfile:	php7.4-curl \
+srcs/requirements/wordpress/Dockerfile:	php7.4-gd \
+srcs/requirements/wordpress/Dockerfile:	php7.4-xml \
+srcs/requirements/wordpress/Dockerfile:	php7.4-mbstring \
+srcs/requirements/wordpress/Dockerfile:	php7.4-redis \
+srcs/requirements/wordpress/Dockerfile:	mariadb-client;
+srcs/requirements/wordpress/Dockerfile:RUN apt-get install -y wget;
+srcs/requirements/wordpress/Dockerfile:RUN apt-get install -y curl;
+srcs/requirements/wordpress/Dockerfile:RUN apt-get clean \
+srcs/requirements/wordpress/Dockerfile:	&& rm -rf /var/lib/apt/lists/*;
+srcs/requirements/wordpress/Dockerfile:RUN mkdir -p /var/run/php;
+srcs/requirements/wordpress/Dockerfile:WORKDIR /var/www/html
+srcs/requirements/wordpress/Dockerfile:RUN wget https://wordpress.org/latest.tar.gz \
+srcs/requirements/wordpress/Dockerfile:	&& tar -zxf latest.tar.gz \
+srcs/requirements/wordpress/Dockerfile:	&& mv wordpress/* . \
+srcs/requirements/wordpress/Dockerfile:	&& rm -fr wordpress latest.tar.gz \
+srcs/requirements/wordpress/Dockerfile:	&& find /var/www/html -type d -exec chmod 755 {} \;\
+srcs/requirements/wordpress/Dockerfile:	&& find /var/www/html -type f -exec chmod 644 {} \;\
+srcs/requirements/wordpress/Dockerfile:	&& chown -R www-data:www-data /var/www/html;
+srcs/requirements/wordpress/Dockerfile:RUN mkdir -p /run/php/ \
+srcs/requirements/wordpress/Dockerfile:	&& sed -i 's/listen = \/run\/php\/php7.4-fpm.sock/listen = 9000/g' /etc/php/7.4/fpm/pool.d/www.conf \
+srcs/requirements/wordpress/Dockerfile:	&& sed -i 's/;clear_env = no/clear_env = no/g' /etc/php/7.4/fpm/pool.d/www.conf;
+srcs/requirements/wordpress/Dockerfile:RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+srcs/requirements/wordpress/Dockerfile:	&& chmod +x wp-cli.phar \
+srcs/requirements/wordpress/Dockerfile:	&& mv wp-cli.phar /usr/local/bin/wp;
+srcs/requirements/wordpress/Dockerfile:COPY /conf/www.cnf /etc/php/7.4/fpm/pool.d/www.conf
+srcs/requirements/wordpress/Dockerfile:COPY /tools/healthcheck.sh /usr/local/bin/healthcheck.sh
+srcs/requirements/wordpress/Dockerfile:COPY /tools/setup.sh /usr/local/bin/setup.sh
+srcs/requirements/wordpress/Dockerfile:RUN chmod +x /usr/local/bin/setup.sh
+srcs/requirements/wordpress/Dockerfile:RUN chmod +x /usr/local/bin/healthcheck.sh
+srcs/requirements/wordpress/Dockerfile:EXPOSE 9000
+srcs/requirements/wordpress/Dockerfile:ENTRYPOINT [ "setup.sh" ]
+srcs/requirements/ftp/tools/setup.sh:#!/bin/sh
+srcs/requirements/ftp/tools/setup.sh:set -e
+srcs/requirements/ftp/tools/setup.sh:cleanup () {
+srcs/requirements/ftp/tools/setup.sh:    unset REDIS_PASSWORD
+srcs/requirements/ftp/tools/setup.sh:}
+srcs/requirements/ftp/tools/setup.sh:trap cleanup EXIT
+srcs/requirements/ftp/tools/setup.sh:if [ -f /run/secrets/ftp_user ] && [ -f /run/secrets/ftp_password ]; then
+srcs/requirements/ftp/tools/setup.sh:    FTP_USER=$(cat /run/secrets/ftp_user)
+srcs/requirements/ftp/tools/setup.sh:    FTP_PASSWORD=$(cat /run/secrets/ftp_password)
+srcs/requirements/ftp/tools/setup.sh:else
+srcs/requirements/ftp/tools/setup.sh:    FTP_USER=${FTP_USER:-ftp_user}
+srcs/requirements/ftp/tools/setup.sh:    FTP_PASSWORD=${FTP_PASSWORD:-ftp_password}
+srcs/requirements/ftp/tools/setup.sh:fi
+srcs/requirements/ftp/tools/setup.sh:if ! id "$FTP_USER" &>/dev/null; then
+srcs/requirements/ftp/tools/setup.sh:    adduser -D -h /var/www/html "$FTP_USER"
+srcs/requirements/ftp/tools/setup.sh:fi
+srcs/requirements/ftp/tools/setup.sh:echo "$FTP_USER:$FTP_PASSWORD" | chpasswd
+srcs/requirements/ftp/tools/setup.sh:echo $FTP_USER >> /etc/csftpd.userlist
+srcs/requirements/ftp/tools/setup.sh:chown -R $FTP_USER:$FTP_USER /var/www/html
+srcs/requirements/ftp/tools/setup.sh:echo "THIS LINE RIGHT HERE"
+srcs/requirements/ftp/tools/setup.sh:ip route get 1
+srcs/requirements/ftp/tools/setup.sh:if [ -z "$PASV_ADDRESS" ]; then
+srcs/requirements/ftp/tools/setup.sh:  PASV_ADDRESS=$(ip route get 1 | awk '{print $(NF);exit}')
+srcs/requirements/ftp/tools/setup.sh:  echo "Auto-detected IP: $PASV_ADDRESS"
+srcs/requirements/ftp/tools/setup.sh:fi
+srcs/requirements/ftp/tools/setup.sh:echo "pasv_address=$PASV_ADDRESS" >> /etc/vsftpd/vsftpd.conf
+srcs/requirements/ftp/tools/setup.sh:echo "FTP server is starting..."
+srcs/requirements/ftp/tools/setup.sh:exec vsftpd /etc/vsftpd/vsftpd.conf
+srcs/requirements/adminer/tools/setup.sh:#!/bin/sh
+srcs/requirements/adminer/tools/setup.sh:set -e
+srcs/requirements/adminer/tools/setup.sh:mkdir -p /run/nginx
+srcs/requirements/adminer/tools/setup.sh:php-fpm8 &
+srcs/requirements/adminer/tools/setup.sh:exec nginx -g "daemon off;"
+srcs/requirements/ftp/conf/vsftpd.conf:background=NO
+srcs/requirements/ftp/conf/vsftpd.conf:anonymous_enable=NO
+srcs/requirements/ftp/conf/vsftpd.conf:local_enable=YES
+srcs/requirements/ftp/conf/vsftpd.conf:write_enable=YES
+srcs/requirements/ftp/conf/vsftpd.conf:chroot_local_user=YES
+srcs/requirements/ftp/conf/vsftpd.conf:allow_writeable_chroot=YES
+srcs/requirements/ftp/conf/vsftpd.conf:local_umask=022
+srcs/requirements/ftp/conf/vsftpd.conf:pasv_enable=YES
+srcs/requirements/ftp/conf/vsftpd.conf:pasv_min_port=21100
+srcs/requirements/ftp/conf/vsftpd.conf:pasv_max_port=21110
+srcs/requirements/ftp/conf/vsftpd.conf:xferlog_enable=YES
+srcs/requirements/ftp/conf/vsftpd.conf:xferlog_std_format=YES
+srcs/requirements/ftp/conf/vsftpd.conf:xferlog_file=/var/log/vsftpd.log
+srcs/requirements/ftp/conf/vsftpd.conf:log_ftp_protocol=YES
+srcs/requirements/ftp/conf/vsftpd.conf:listen=YES
+srcs/requirements/ftp/conf/vsftpd.conf:listen_ipv6=NO
+srcs/requirements/ftp/conf/vsftpd.conf:nopriv_user=ftp
+srcs/requirements/ftp/conf/vsftpd.conf:pam_service_name=vsftpd
+srcs/requirements/ftp/conf/vsftpd.conf:seccomp_sandbox=NO
+srcs/requirements/ftp/conf/vsftpd.conf:local_root=/var/www/html
+srcs/requirements/ftp/conf/vsftpd.conf:force_dot_files=NO
+srcs/requirements/adminer/tools/healthcheck.sh:#!/bin/sh
+srcs/requirements/adminer/tools/healthcheck.sh:set -e
+srcs/requirements/adminer/tools/healthcheck.sh:if ! pgrep php-fpm8 > /dev/null; then
+srcs/requirements/adminer/tools/healthcheck.sh:    echo "Error: Php-fpm is not running"
+srcs/requirements/adminer/tools/healthcheck.sh:    exit 1
+srcs/requirements/adminer/tools/healthcheck.sh:fi
+srcs/requirements/adminer/tools/healthcheck.sh:if ! netstat -tuln | grep -q ":9000.*LISTEN"; then
+srcs/requirements/adminer/tools/healthcheck.sh:    echo "Error: Php-fpm is not listening on port 9000"
+srcs/requirements/adminer/tools/healthcheck.sh:    exit 1
+srcs/requirements/adminer/tools/healthcheck.sh:fi
+srcs/requirements/adminer/tools/healthcheck.sh:echo "Adminer container is healthy"
+srcs/requirements/adminer/tools/healthcheck.sh:exit 0
+srcs/requirements/nginx/conf/nginx.conf:user www-data;
+srcs/requirements/nginx/conf/nginx.conf:worker_processes auto;
+srcs/requirements/nginx/conf/nginx.conf:pid /var/run/nginx/nginx.pid;
+srcs/requirements/nginx/conf/nginx.conf:include /etc/nginx/modules-enabled/*.conf;
+srcs/requirements/nginx/conf/nginx.conf:events {
+srcs/requirements/nginx/conf/nginx.conf:    worker_connections 1024;
+srcs/requirements/nginx/conf/nginx.conf:}
+srcs/requirements/nginx/conf/nginx.conf:http {
+srcs/requirements/nginx/conf/nginx.conf:    sendfile on;
+srcs/requirements/nginx/conf/nginx.conf:    tcp_nopush on;
+srcs/requirements/nginx/conf/nginx.conf:    keepalive_timeout 65;
+srcs/requirements/nginx/conf/nginx.conf:    types_hash_max_size 2048;
+srcs/requirements/nginx/conf/nginx.conf:    server_tokens off;
+srcs/requirements/nginx/conf/nginx.conf:    include /etc/nginx/mime.types;
+srcs/requirements/nginx/conf/nginx.conf:    default_type application/octet-stream;
+srcs/requirements/nginx/conf/nginx.conf:    ssl_protocols TLSv1.2 TLSv1.3;
+srcs/requirements/nginx/conf/nginx.conf:    ssl_prefer_server_ciphers on;
+srcs/requirements/nginx/conf/nginx.conf:    ssl_ciphers "EECDH+AESGCM:EDH+AESGCM";
+srcs/requirements/nginx/conf/nginx.conf:    ssl_ecdh_curve secp384r1;
+srcs/requirements/nginx/conf/nginx.conf:    ssl_session_cache shared:SSL:10m;
+srcs/requirements/nginx/conf/nginx.conf:    ssl_session_tickets off;
+srcs/requirements/nginx/conf/nginx.conf:    access_log /var/log/nginx/access.log;
+srcs/requirements/nginx/conf/nginx.conf:    error_log /var/log/nginx/error.log;
+srcs/requirements/nginx/conf/nginx.conf:    gzip on;
+srcs/requirements/nginx/conf/nginx.conf:    include /etc/nginx/conf.d/*.conf;
+srcs/requirements/nginx/conf/nginx.conf:    include /etc/nginx/site-enabled/*;
+srcs/requirements/nginx/conf/nginx.conf:}
+srcs/requirements/nginx/conf/adminer.conf:server {
+srcs/requirements/nginx/conf/adminer.conf:    listen 443 ssl;
+srcs/requirements/nginx/conf/adminer.conf:    server_name adminer.joao-pol.42.fr;
+srcs/requirements/nginx/conf/adminer.conf:    ssl_certificate /etc/nginx/ssl/nginx.crt;
+srcs/requirements/nginx/conf/adminer.conf:    ssl_certificate_key /etc/nginx/ssl/nginx.key;
+srcs/requirements/nginx/conf/adminer.conf:    location / {
+srcs/requirements/nginx/conf/adminer.conf:        proxy_pass http://adminer:8080;
+srcs/requirements/nginx/conf/adminer.conf:        proxy_set_header Host $host;
+srcs/requirements/nginx/conf/adminer.conf:        proxy_set_header X-Real-IP $remote_addr;
+srcs/requirements/nginx/conf/adminer.conf:        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+srcs/requirements/nginx/conf/adminer.conf:        proxy_set_header X-Forwarded-Proto $scheme;
+srcs/requirements/nginx/conf/adminer.conf:    }
+srcs/requirements/nginx/conf/adminer.conf:}
+srcs/requirements/wordpress/tools/healthcheck.sh:#!/bin/bash
+srcs/requirements/wordpress/tools/healthcheck.sh:set -e
+srcs/requirements/wordpress/tools/healthcheck.sh:DB_USER=$(cat /run/secrets/db_user 2>/dev/null)
+srcs/requirements/wordpress/tools/healthcheck.sh:DB_PASSWORD=$(cat /run/secrets/db_password 2>/dev/null)
+srcs/requirements/wordpress/tools/healthcheck.sh:DB_HOST=$(cat /run/secrets/wp_db_host 2>/dev/null)
+srcs/requirements/wordpress/tools/healthcheck.sh:WP_DIR="/var/www/html"
+srcs/requirements/wordpress/tools/healthcheck.sh:echo "Test php process"
+srcs/requirements/wordpress/tools/healthcheck.sh:if ! pgrep -x "php-fpm7.4" > /dev/null; then
+srcs/requirements/wordpress/tools/healthcheck.sh:    echo "Error: php-fpm is not running"
+srcs/requirements/wordpress/tools/healthcheck.sh:    exit 1
+srcs/requirements/wordpress/tools/healthcheck.sh:fi
+srcs/requirements/wordpress/tools/healthcheck.sh:echo "Test 9000 port"
+srcs/requirements/wordpress/tools/healthcheck.sh:if ! netstat -tulpn | grep -q ":9000.*LISTEN"; then
+srcs/requirements/wordpress/tools/healthcheck.sh:    echo "Error: php-fpm is not listening on port 9000"
+srcs/requirements/wordpress/tools/healthcheck.sh:    exit 1
+srcs/requirements/wordpress/tools/healthcheck.sh:fi
+srcs/requirements/wordpress/tools/healthcheck.sh:echo "Test mysql"
+srcs/requirements/wordpress/tools/healthcheck.sh:if ! mysqladmin ping -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --silent; then
+srcs/requirements/wordpress/tools/healthcheck.sh:    echo "Error: Cannot connect to MySQL database"
+srcs/requirements/wordpress/tools/healthcheck.sh:    exit 1
+srcs/requirements/wordpress/tools/healthcheck.sh:fi
+srcs/requirements/wordpress/tools/healthcheck.sh:echo "WordPress container is healthy"
+srcs/requirements/wordpress/tools/healthcheck.sh:exit 0
+srcs/requirements/wordpress/tools/setup.sh:#!/usr/bin/env bash
+srcs/requirements/wordpress/tools/setup.sh:set -eo pipefail
+srcs/requirements/wordpress/tools/setup.sh:cleanup () {
+srcs/requirements/wordpress/tools/setup.sh:    unset DB_PASSWORD DB_USER DB_NAME DB_HOST WP_ADMIN_USER WP_ADMIN_PASSWORD WP_ADMIN_EMAIL WP_URL
+srcs/requirements/wordpress/tools/setup.sh:}
+srcs/requirements/wordpress/tools/setup.sh:trap cleanup EXIT
+srcs/requirements/wordpress/tools/setup.sh:DB_PASSWORD=$(cat /run/secrets/db_password)
+srcs/requirements/wordpress/tools/setup.sh:DB_USER=$(cat /run/secrets/db_user)
+srcs/requirements/wordpress/tools/setup.sh:DB_NAME=${WP_DB_NAME:-wordpress}
+srcs/requirements/wordpress/tools/setup.sh:DB_HOST=$(cat /run/secrets/wp_db_host)
+srcs/requirements/wordpress/tools/setup.sh:WP_ADMIN_USER=$(cat /run/secrets/wp_admin_user)
+srcs/requirements/wordpress/tools/setup.sh:WP_ADMIN_PASSWORD=$(cat /run/secrets/wp_admin_password)
+srcs/requirements/wordpress/tools/setup.sh:WP_ADMIN_EMAIL=$(cat /run/secrets/wp_admin_email)
+srcs/requirements/wordpress/tools/setup.sh:WP_URL=$(cat /run/secrets/wp_url)
+srcs/requirements/wordpress/tools/setup.sh:DOMAIN_NAME=$(cat /run/secrets/domain_name)
+srcs/requirements/wordpress/tools/setup.sh:REDIS_PASSWORD=$(cat /run/secrets/redis_password)
+srcs/requirements/wordpress/tools/setup.sh:echo "Checking Database"
+srcs/requirements/wordpress/tools/setup.sh:until mysqladmin ping -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --silent; do
+srcs/requirements/wordpress/tools/setup.sh:    echo "Waiting for MySQL to start..."
+srcs/requirements/wordpress/tools/setup.sh:    sleep 5
+srcs/requirements/wordpress/tools/setup.sh:done
+srcs/requirements/wordpress/tools/setup.sh:echo "Database is online"
+srcs/requirements/wordpress/tools/setup.sh:if [ ! -f "/var/www/html/wp-config.php" ]; then
+srcs/requirements/wordpress/tools/setup.sh:    echo "wp-config not found, creating Wordpress config"
+srcs/requirements/wordpress/tools/setup.sh:    wp config create --dbname="$DB_NAME" --dbuser="$DB_USER" --dbpass="$DB_PASSWORD" --dbhost="$DB_HOST" --allow-root
+srcs/requirements/wordpress/tools/setup.sh:    echo "Wordpress installing"
+srcs/requirements/wordpress/tools/setup.sh:    wp core install --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_email="$WP_ADMIN_EMAIL" \
+srcs/requirements/wordpress/tools/setup.sh:        --admin_password="$WP_ADMIN_PASSWORD" --allow-root
+srcs/requirements/wordpress/tools/setup.sh:    echo "Wordpress installed successfully"
+srcs/requirements/wordpress/tools/setup.sh:    chown -R www-data:www-data /var/www/html
+srcs/requirements/wordpress/tools/setup.sh:else
+srcs/requirements/wordpress/tools/setup.sh:    CURRENT_URL=$(wp option get siteurl --allow-root 2>/dev/null || echo "")
+srcs/requirements/wordpress/tools/setup.sh:    if [ "$CURRENT_URL" != "$WP_URL" ]; then
+srcs/requirements/wordpress/tools/setup.sh:        echo "Update home and siteurl and add theme"
+srcs/requirements/wordpress/tools/setup.sh:        wp option update home "$WP_URL" --allow-root
+srcs/requirements/wordpress/tools/setup.sh:        wp option update siteurl "$WP_URL" --allow-root
+srcs/requirements/wordpress/tools/setup.sh:    fi
+srcs/requirements/wordpress/tools/setup.sh:fi
+srcs/requirements/wordpress/tools/setup.sh:#Stuff related to redis
+srcs/requirements/wordpress/tools/setup.sh:wp plugin install redis-cache --activate --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp config set WP_REDIS_PASSWORD "$REDIS_PASSWORD" --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp config set WP_REDIS_HOST redis --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp config set WP_REDIS_PORT 6379 --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp config set WP_REDIS_TIMEOUT 1 --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp config set WP_REDIS_READ_TIMEOUT 1 --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp config set WP_REDIS_DATABASE 0 --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp redis enable --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp redis update-dropin --allow-root
+srcs/requirements/wordpress/tools/setup.sh:wp redis status --allow-root || echo "Error: Redis connection failed";
+srcs/requirements/wordpress/tools/setup.sh:echo "Exec php as PID 1"
+srcs/requirements/wordpress/tools/setup.sh:exec php-fpm7.4 -F
+srcs/requirements/wordpress/conf/www.cnf:[www]
+srcs/requirements/wordpress/conf/www.cnf:user = www-data
+srcs/requirements/wordpress/conf/www.cnf:group = www-data
+srcs/requirements/wordpress/conf/www.cnf:listen = 9000
+srcs/requirements/wordpress/conf/www.cnf:pm = dynamic
+srcs/requirements/wordpress/conf/www.cnf:pm.max_children =5 
+srcs/requirements/wordpress/conf/www.cnf:pm.start_servers = 3
+srcs/requirements/wordpress/conf/www.cnf:pm.min_spare_servers = 2
+srcs/requirements/wordpress/conf/www.cnf:pm.max_spare_servers = 4
+srcs/requirements/wordpress/conf/www.cnf:clear_env = no
+srcs/requirements/wordpress/conf/wp-config.php:<?php
+srcs/requirements/wordpress/conf/wp-config.php:define('DB_NAME', 'wordpress')
+srcs/requirements/wordpress/conf/wp-config.php:define('DB_USER', 'wpuser')
+srcs/requirements/wordpress/conf/wp-config.php:define('DB_PASSWORD', getenv('DB_PASSWORD'))
+srcs/requirements/wordpress/conf/wp-config.php:define('DB_HOST', 'mariadb')
+srcs/requirements/wordpress/conf/wp-config.php:define('DB_CHARSET', 'utf8mb4')
+srcs/requirements/wordpress/conf/wp-config.php:define('WP_HOME', 'https://' . getenv('DOMAIN_NAME'))
+srcs/requirements/wordpress/conf/wp-config.php:define('WP_SITEURL', 'https://' . getenv('DOMAIN_NAME'))
+srcs/requirements/wordpress/conf/wp-config.php:define('REDIS_PASSWORD', getenv('REDIS_PASSWORD'))
+srcs/requirements/ftp/tools/healthcheck.sh:#!/bin/bash
+srcs/requirements/ftp/tools/healthcheck.sh:set -e
+srcs/requirements/ftp/tools/healthcheck.sh:if ! pgrep vsftpd > /dev/null; then
+srcs/requirements/ftp/tools/healthcheck.sh:    echo "Error: vsftpd is not running"
+srcs/requirements/ftp/tools/healthcheck.sh:    exit 1
+srcs/requirements/ftp/tools/healthcheck.sh:fi
+srcs/requirements/ftp/tools/healthcheck.sh:if ! netstat -tuln | grep -q ":21.*LISTEN"; then
+srcs/requirements/ftp/tools/healthcheck.sh:    echo "Error: vsftpd is not listening on port 21"
+srcs/requirements/ftp/tools/healthcheck.sh:    exit 1
+srcs/requirements/ftp/tools/healthcheck.sh:fi
+srcs/requirements/ftp/tools/healthcheck.sh:echo "FTP container is healthy"
+srcs/requirements/ftp/tools/healthcheck.sh:exit 0
+srcs/requirements/adminer/conf/nginx.conf:server {
+srcs/requirements/adminer/conf/nginx.conf:    listen 8080;
+srcs/requirements/adminer/conf/nginx.conf:    root /var/www/html;
+srcs/requirements/adminer/conf/nginx.conf:    index index.php;
+srcs/requirements/adminer/conf/nginx.conf:    location ~ \.php$ {
+srcs/requirements/adminer/conf/nginx.conf:        fastcgi_pass 127.0.0.1:9000;
+srcs/requirements/adminer/conf/nginx.conf:        fastcgi_index index.php;
+srcs/requirements/adminer/conf/nginx.conf:        include fastcgi_params;
+srcs/requirements/adminer/conf/nginx.conf:        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+srcs/requirements/adminer/conf/nginx.conf:    }
+srcs/requirements/adminer/conf/nginx.conf:    
+srcs/requirements/adminer/conf/nginx.conf:    location / {
+srcs/requirements/adminer/conf/nginx.conf:        try_files $uri $uri/ /index.php?$args;
+srcs/requirements/adminer/conf/nginx.conf:    }
+srcs/requirements/adminer/conf/nginx.conf:}
+srcs/requirements/nginx/conf/default.conf:server {
+srcs/requirements/nginx/conf/default.conf:    listen 443 ssl;
+srcs/requirements/nginx/conf/default.conf:    server_name joao-pol.42.fr;
+srcs/requirements/nginx/conf/default.conf:    ssl_certificate /etc/nginx/ssl/nginx.crt;
+srcs/requirements/nginx/conf/default.conf:    ssl_certificate_key /etc/nginx/ssl/nginx.key;
+srcs/requirements/nginx/conf/default.conf:    root /var/www/html;
+srcs/requirements/nginx/conf/default.conf:    index index.php index.html index.htm;
+srcs/requirements/nginx/conf/default.conf:    
+srcs/requirements/nginx/conf/default.conf:    location / {
+srcs/requirements/nginx/conf/default.conf:        try_files $uri $uri/ /index.php?$args;
+srcs/requirements/nginx/conf/default.conf:    }
+srcs/requirements/nginx/conf/default.conf:    
+srcs/requirements/nginx/conf/default.conf:    location ~ \.php$ {
+srcs/requirements/nginx/conf/default.conf:        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+srcs/requirements/nginx/conf/default.conf:        fastcgi_pass wordpress:9000;
+srcs/requirements/nginx/conf/default.conf:        fastcgi_index index.php;
+srcs/requirements/nginx/conf/default.conf:        include fastcgi_params;
+srcs/requirements/nginx/conf/default.conf:        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+srcs/requirements/nginx/conf/default.conf:        fastcgi_param PATH_INFO $fastcgi_path_info;
+srcs/requirements/nginx/conf/default.conf:    }
+srcs/requirements/nginx/conf/default.conf:    location ~ /\. {
+srcs/requirements/nginx/conf/default.conf:        deny all;
+srcs/requirements/nginx/conf/default.conf:        access_log off;
+srcs/requirements/nginx/conf/default.conf:        log_not_found off;
+srcs/requirements/nginx/conf/default.conf:    }
+srcs/requirements/nginx/conf/default.conf:}
