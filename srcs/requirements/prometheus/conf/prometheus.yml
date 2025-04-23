@@ -1,0 +1,26 @@
+global:
+  scrape_interval: "15s"
+  evaluation_interval: "15s"
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:443']
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+
+  - job_name: 'mariadb'
+    static_configs:
+      - targets: ['mariadb:3306']
+
+  - job_name: 'wordpress'
+    static_configs:
+      - targets: ['wordpress:9000']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']

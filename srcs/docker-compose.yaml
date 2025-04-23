@@ -127,6 +127,26 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+  grafana:
+    image: grafana:42
+    build:
+      context: ./requirements/grafana/
+      dockerfile: Dockerfile
+    container_name: grafana
+    restart: always
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 secrets:
   db_user:
@@ -174,6 +194,12 @@ volumes:
     driver_opts:
       type: none
       device: /home/${USER}/data/wordpress
+      o: bind
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/${USER}/data/grafana
       o: bind
 
 networks:
