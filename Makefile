@@ -12,6 +12,8 @@ down:
 datadir:
 	@mkdir -p ~/data/mysql/
 	@mkdir -p ~/data/wordpress/
+	@mkdir -p ~/data/prometheus/
+	@mkdir -p ~/data/grafana/
 
 re: datadir
 	docker compose -f ./srcs/docker-compose.yaml up --build
