@@ -13,11 +13,14 @@ datadir:
 	@mkdir -p ~/data/mysql/
 	@mkdir -p ~/data/wordpress/
 
-re:
+re: datadir
 	docker compose -f ./srcs/docker-compose.yaml up --build
 
 clean:
 	docker compose -f ./srcs/docker-compose.yaml down -v
 	docker system prune --all
+
+fclean: clean
+	sudo rm -fr ~/data
 
 .PHONY: all build up datadir down clean re

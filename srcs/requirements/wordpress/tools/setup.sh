@@ -28,12 +28,17 @@ echo "Database is online"
 if [ ! -f "/var/www/html/wp-config.php" ]; then
     echo "wp-config not found, creating Wordpress config"
     wp config create --dbname="$DB_NAME" --dbuser="$DB_USER" --dbpass="$DB_PASSWORD" --dbhost="$DB_HOST" --allow-root
-    echo "Wordpress installing"
+echo "Wordpress installing"
     wp core install --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_email="$WP_ADMIN_EMAIL" \
         --admin_password="$WP_ADMIN_PASSWORD" --allow-root
     echo "Wordpress installed successfully"
     chown -R www-data:www-data /var/www/html
 else
+echo "Wordpress installing"
+    wp core install --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_email="$WP_ADMIN_EMAIL" \
+        --admin_password="$WP_ADMIN_PASSWORD" --allow-root
+    echo "Wordpress installed successfully"
+    chown -R www-data:www-data /var/www/html
     CURRENT_URL=$(wp option get siteurl --allow-root 2>/dev/null || echo "")
     if [ "$CURRENT_URL" != "$WP_URL" ]; then
         echo "Update home and siteurl and add theme"

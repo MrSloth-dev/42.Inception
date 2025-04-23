@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 cleanup () {
-    unset REDIS_PASSWORD
+    unset FTP_USER FTP_PASSWORD
 }
 trap cleanup EXIT
 
@@ -20,9 +20,7 @@ echo "$FTP_USER:$FTP_PASSWORD" | chpasswd
 
 echo $FTP_USER >> /etc/csftpd.userlist
 
-chown -R $FTP_USER:$FTP_USER /var/www/html
-echo "THIS LINE RIGHT HERE"
-ip route get 1
+chmod -R 777 /var/www/html
 if [ -z "$PASV_ADDRESS" ]; then
   PASV_ADDRESS=$(ip route get 1 | awk '{print $(NF);exit}')
   echo "Auto-detected IP: $PASV_ADDRESS"
