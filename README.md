@@ -50,6 +50,9 @@ make down
 
 # Clean all containers and volumes
 make clean
+
+# Clean all containers and volumes and remove ~/data directory
+make fclean
 ```
 
 ## Volumes
@@ -62,12 +65,14 @@ The project uses persistent volumes for:
 
 All services communicate through an internal Docker network called "inception".
 
+
 ## Security
 
 - No passwords in Dockerfiles
 - Environment variables for configuration
 - Docker secrets for sensitive data
 - TLS encryption for web traffic
+- Tested with CI and Github Secrets
 
 ## Notes
 
