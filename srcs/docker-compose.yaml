@@ -127,6 +127,26 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+  prometheus:
+    image: prometheus:42
+    build:
+      context: ./requirements/prometheus/
+      dockerfile: Dockerfile
+    container_name: prometheus
+    restart: always
+    depends_on:
+      - nginx
+    volumes:
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
   grafana:
     image: grafana:42
     build:
@@ -194,6 +214,12 @@ volumes:
     driver_opts:
       type: none
       device: /home/${USER}/data/wordpress
+      o: bind
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/${USER}/data/prometheus
       o: bind
   grafana_data:
     driver: local
