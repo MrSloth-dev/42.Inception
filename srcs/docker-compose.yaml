@@ -56,6 +56,7 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - wordpress
+      - portainer
     container_name: nginx
     restart: always
     ports:
@@ -127,6 +128,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+  portainer:
+    image: portainer:42
+    build:
+      context: ./requirements/portainer/
+      dockerfile: Dockerfile
+    container_name: portainer
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    ports:
+      - "9000:9000"
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 secrets:
   db_user:
@@ -174,6 +194,12 @@ volumes:
     driver_opts:
       type: none
       device: /home/${USER}/data/wordpress
+      o: bind
+  portainer_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/${USER}/data/portainer
       o: bind
 
 networks:
