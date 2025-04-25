@@ -13,6 +13,7 @@ down:
 datadir:
 	@mkdir -p ~/data/mysql/
 	@mkdir -p ~/data/wordpress/
+	@mkdir -p ~/data/portainer/
 
 re: datadir
 	$(DOCKER_COMPOSE) -f ./srcs/docker-compose.yaml up --build
