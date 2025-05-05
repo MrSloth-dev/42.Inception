@@ -1,8 +1,8 @@
-FROM alpine:3.16
+FROM alpine:3.20
 
 RUN apk update && apk add --no-cache \
-		redis \
-		&& rm -fr /var/cache/apk/*
+	redis \
+	&& rm -fr /var/cache/apk/*
 
 COPY ./conf/redis.conf /etc/redis.conf
 COPY ./tools/healthcheck.sh /usr/local/bin/healthcheck.sh

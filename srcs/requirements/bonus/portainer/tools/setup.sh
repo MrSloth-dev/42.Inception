@@ -6,4 +6,5 @@ if [ ! -w "/var/run/docker.sock" ]; then
 fi
 echo "Starting Portainer..."
 exec /usr/local/bin/portainer \
+  --admin-password-file=/run/secrets/port_password \
   --data /data \
