@@ -58,6 +58,7 @@ jobs:
           echo "$FTP_USER" > secrets/ftp_user
           echo "$FTP_PASSWORD" > secrets/ftp_password
           echo "$FTP_PASV_ADDRESS" > secrets/ftp_pasv_address
+          echo "$PORT_PASSWORD" > secrets/port_password
       
       - name: Build Docker images
         run: |
