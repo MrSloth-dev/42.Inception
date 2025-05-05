@@ -13,7 +13,7 @@ A Docker infrastructure project that creates a small virtualized environment wit
 - **Redis**: Caching system for WordPress
 - **Adminer**: Database management tool
 - **FTP Server**: File Transfer Protocol service
-- **Prometheus + Grafana**: Monitoring stack
+- **Portainer**: Container management platform
 - **Static Website**: Simple static site
 
 ## Project Structure
@@ -24,16 +24,31 @@ A Docker infrastructure project that creates a small virtualized environment wit
 ├── secrets/           # Contains all sensitive information
 └── srcs/
     ├── docker-compose.yaml
-    └── requirements/
-        ├── mariadb/
-        ├── nginx/
-        ├── wordpress/
-        ├── redis/      # Bonus
-        ├── adminer/    # Bonus
-        ├── ftp/        # Bonus
-        ├── prometheus/ # Bonus
-        ├── grafana/    # Bonus
-        └── website/    # Bonus
+    ├── requirements
+    └── bonus
+        │   ├── adminer
+        │   │   ├── conf
+        │   │   └── tools
+        │   ├── ftp
+        │   │   ├── conf
+        │   │   └── tools
+        │   ├── portainer
+        │   │   └── tools
+        │   └── redis
+        │       ├── conf
+        │       └── tools
+        ├── mariadb
+        │   ├── conf
+        │   └── tools
+        ├── nginx
+        │   ├── conf
+        │   └── tools
+        ├── portainer
+        │   └── tools
+        └── wordpress
+            ├── conf
+            └── tools
+
 ```
 
 ## Usage
@@ -50,6 +65,8 @@ make down
 
 # Clean all containers and volumes
 make clean
+# Clean all containers, volumes and data persistent directory ( needs sudo permission)
+make fclean
 ```
 
 ## Volumes
