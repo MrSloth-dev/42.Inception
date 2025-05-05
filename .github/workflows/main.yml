@@ -1,6 +1,7 @@
 name: Docker Containers Test
 
 on:
+  
   push:
     branches: [ main, master ]
   pull_request:
@@ -38,6 +39,7 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_PASV_ADDRESS: ${{ secrets.FTP_PASV_ADDRESS }}
+          PORT_PASSWORD: ${{ secrets.PORT_PASSWORD }}
         run: |
           mkdir -p secrets
           echo "$DOMAIN_NAME" > secrets/domain_name
@@ -65,7 +67,7 @@ jobs:
         run: |
           make up
           echo "Waiting for containers to initialize (60 seconds)..."
-          sleep 60  # Give containers time to start
+          sleep 45  # Give containers time to start
 
       - name: Check running containers and logs
         run: |
@@ -276,6 +278,51 @@ jobs:
             exit 1
           fi
           echo "FTP container test successfully completed"
+
+
+      - name: Test Portainer container
+        run: |
+          PORTAINER_CONTAINER_ID=$(docker ps -q --filter "name=portainer")
+          if [ -z "$PORTAINER_CONTAINER_ID" ]; then
+            echo "Portainer container is not running"
+            exit 1
+          fi
+
+          HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $PORTAINER_CONTAINER_ID)
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "Portainer container has unhealthy status, checking if process is running"
+            if ! docker exec $PORTAINER_CONTAINER_ID pgrep portainer > /dev/null; then
+              echo "Portainer process is not running"
+              docker logs $PORTAINER_CONTAINER_ID
+              exit 1
+            fi
+            echo "Portainer process is running despite unhealthy status"
+          else
+            echo "Portainer container is running and healthy"
+          fi
+
+          if ! docker exec $PORTAINER_CONTAINER_ID netstat -tuln | grep -q ":9000.*LISTEN"; then
+            echo "Error: Portainer is not listening on port 9000"
+            docker logs $PORTAINER_CONTAINER_ID
+            exit 1
+          fi
+
+          if ! docker exec $PORTAINER_CONTAINER_ID sh -c "echo -e 'GET / HTTP/1.1\r\nHost: localhost:9000\r\nConnection: close\r\n\r\n' | nc localhost 9000" | grep -q "200 OK\|302 Found"; then
+            echo "Portainer API test failed - HTTP endpoint not responding correctly"
+            docker logs $PORTAINER_CONTAINER_ID
+            exit 1
+          fi
+
+          if ! docker exec $PORTAINER_CONTAINER_ID sh -c "[ -d /data ]"; then
+            echo "Portainer data volume is not properly mounted"
+            exit 1
+          fi
+
+          if ! docker exec $PORTAINER_CONTAINER_ID sh -c "[ -S /var/run/docker.sock ]"; then
+            echo "Docker socket is not properly mounted in Portainer container"
+            exit 1
+          fi
+          echo "Portainer container is functional"
 
       - name: Stop containers
         run: docker compose -f ./srcs/docker-compose.yaml down -v
