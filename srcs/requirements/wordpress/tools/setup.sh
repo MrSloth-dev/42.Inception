@@ -14,6 +14,9 @@ DB_HOST=$(cat /run/secrets/wp_db_host)
 WP_ADMIN_USER=$(cat /run/secrets/wp_admin_user)
 WP_ADMIN_PASSWORD=$(cat /run/secrets/wp_admin_password)
 WP_ADMIN_EMAIL=$(cat /run/secrets/wp_admin_email)
+WP_USER=$(cat /run/secrets/wp_user)
+WP_USER_PASSWORD=$(cat /run/secrets/wp_user_password)
+WP_USER_EMAIL=$(cat /run/secrets/wp_user_email)
 WP_URL=$(cat /run/secrets/wp_url)
 DOMAIN_NAME=$(cat /run/secrets/domain_name)
 REDIS_PASSWORD=$(cat /run/secrets/redis_password)
@@ -45,6 +48,16 @@ echo "Wordpress installing"
         wp option update home "$WP_URL" --allow-root
         wp option update siteurl "$WP_URL" --allow-root
     fi
+fi
+if wp user get "$WP_USER" --allow-root >/dev/null 2>&1; then
+    echo "User '$WP_USER' already exists, skipping creation"
+else
+    echo "Creating WordPress user '$WP_USER'"
+    wp user create "$WP_USER" "$WP_USER_EMAIL" \
+        --role=author \
+        --user_pass="$WP_USER_PASSWORD" \
+        --allow-root
+    echo "WordPress user '$WP_USER' created successfully"
 fi
 #Stuff related to redis
 wp plugin install redis-cache --activate --allow-root
