@@ -41,6 +41,9 @@ services:
       - wp_admin_user
       - wp_admin_password
       - wp_admin_email
+      - wp_user
+      - wp_user_password
+      - wp_user_email
       - wp_url
       - domain_name
     healthcheck:
@@ -172,6 +175,12 @@ secrets:
     file: ../secrets/wp_db_name
   wp_admin_user:
     file: ../secrets/wp_admin_user
+  wp_user:
+    file: ../secrets/wp_user
+  wp_user_email:
+    file: ../secrets/wp_user_email
+  wp_user_password:
+    file: ../secrets/wp_user_password 
   wp_home:
     file: ../secrets/wp_home
   domain_name:
