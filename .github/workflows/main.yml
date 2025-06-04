@@ -27,11 +27,14 @@ jobs:
           WP_URL: ${{ secrets.WP_URL }}
           WP_HOME: ${{ secrets.WP_HOME }}
           WP_DB_NAME: ${{ secrets.WP_DB_NAME }}
-          WP_ADMIN_EMAIL: ${{ secrets.WP_ADMIN_EMAIL }}
           WP_DB_HOST: ${{ secrets.WP_DB_HOST }}
           DB_USER: ${{ secrets.DB_USER }}
-          WP_ADMIN_USER: ${{ secrets.WP_ADMIN_USER }}
           DB_ROOT_PASSWORD: ${{ secrets.DB_ROOT_PASSWORD }}
+          WP_USER: ${{ secrets.WP_USER}}
+          WP_USER_EMAIL: ${{ secrets.WP_USER_EMAIL }}
+          WP_USER_PASSWORD: ${{ secrets.WP_USER_PASSWORD }}
+          WP_ADMIN_USER: ${{ secrets.WP_ADMIN_USER }}
+          WP_ADMIN_EMAIL: ${{ secrets.WP_ADMIN_EMAIL }}
           WP_ADMIN_PASSWORD: ${{ secrets.WP_ADMIN_PASSWORD }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_HOST: ${{ secrets.DB_HOST }}
