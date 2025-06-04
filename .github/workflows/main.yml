@@ -49,11 +49,14 @@ jobs:
           echo "$WP_URL" > secrets/wp_url
           echo "$WP_HOME" > secrets/wp_home
           echo "$WP_DB_NAME" > secrets/wp_db_name
-          echo "$WP_ADMIN_EMAIL" > secrets/wp_admin_email
           echo "$WP_DB_HOST" > secrets/wp_db_host
           echo "$DB_USER" > secrets/db_user
-          echo "$WP_ADMIN_USER" > secrets/wp_admin_user
           echo "$DB_ROOT_PASSWORD" > secrets/db_root_password
+          echo "$WP_USER_EMAIL" > secrets/wp_user_email
+          echo "$WP_USER" > secrets/wp_user
+          echo "$WP_USER_PASSWORD" > secrets/wp_user_password
+          echo "$WP_ADMIN_EMAIL" > secrets/wp_admin_email
+          echo "$WP_ADMIN_USER" > secrets/wp_admin_user
           echo "$WP_ADMIN_PASSWORD" > secrets/wp_admin_password
           echo "$DB_PASSWORD" > secrets/db_password
           echo "$DB_HOST" > secrets/db_host
