@@ -17,11 +17,15 @@ WP_ADMIN_EMAIL=$(cat /run/secrets/wp_admin_email)
 WP_USER=$(cat /run/secrets/wp_user)
 WP_USER_PASSWORD=$(cat /run/secrets/wp_user_password)
 WP_USER_EMAIL=$(cat /run/secrets/wp_user_email)
+WP_USER_EMAIL2=example@email.com
 WP_URL=$(cat /run/secrets/wp_url)
 DOMAIN_NAME=$(cat /run/secrets/domain_name)
 REDIS_PASSWORD=$(cat /run/secrets/redis_password)
 
 echo "Checking Database"
+echo "host$DB_HOST" 
+echo "user$DB_USER" 
+echo "pass$DB_PASSWORD" 
 until mysqladmin ping -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --silent; do
     echo "Waiting for MySQL to start..."
     sleep 5
@@ -53,10 +57,15 @@ if wp user get "$WP_USER" --allow-root >/dev/null 2>&1; then
     echo "User '$WP_USER' already exists, skipping creation"
 else
     echo "Creating WordPress user '$WP_USER'"
-    wp user create "$WP_USER" "$WP_USER_EMAIL" \
+    if ! wp user create "$WP_USER" "$WP_USER_EMAIL" \
         --role=author \
         --user_pass="$WP_USER_PASSWORD" \
-        --allow-root
+        --allow-root ; then
+        wp user create "$WP_USER" "$WP_USER_EMAIL2" \
+            --role=author \
+            --user_pass="$WP_USER_PASSWORD" \
+            --allow-root
+    fi
     echo "WordPress user '$WP_USER' created successfully"
 fi
 #Stuff related to redis
