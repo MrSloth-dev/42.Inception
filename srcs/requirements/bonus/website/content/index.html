@@ -22,28 +22,59 @@
         <section class="services">
             <h3>Services Overview</h3>
             <div class="service-grid">
-                <div class="service">
-                    <h4>NGINX</h4>
-                    <p>Reverse proxy with TLS termination</p>
-                </div>
-                <div class="service">
+                <a href="https://joao-pol.42.fr" class="service" target="_blank" rel="noopener">
+                    <h4>NGINX + WordPress</h4>
+                    <p>Main website with reverse proxy and TLS termination</p>
+                    <span class="service-status">🌐</span>
+                </a>
+                
+                <a href="https://joao-pol.42.fr" class="service" target="_blank" rel="noopener">
                     <h4>WordPress</h4>
-                    <p>Content management system</p>
-                </div>
-                <div class="service">
+                    <p>Content management system with PHP-FPM</p>
+                    <span class="service-status">📝</span>
+                </a>
+                
+                <div class="service service-internal">
                     <h4>MariaDB</h4>
-                    <p>Database server</p>
+                    <p>Database server for WordPress data</p>
+                    <span class="service-status">🗄️</span>
                 </div>
-                <div class="service">
+                
+                <div class="service service-internal">
                     <h4>Redis</h4>
-                    <p>Caching layer</p>
+                    <p>Caching layer for improved performance</p>
+                    <span class="service-status">⚡</span>
                 </div>
+                
+                <a href="https://adminer.joao-pol.42.fr" class="service" target="_blank" rel="noopener">
+                    <h4>Adminer</h4>
+                    <p>Database management interface</p>
+                    <span class="service-status">🔧</span>
+                </a>
+                
+                <a href="https://portainer.joao-pol.42.fr" class="service" target="_blank" rel="noopener">
+                    <h4>Portainer</h4>
+                    <p>Container management platform</p>
+                    <span class="service-status">🐳</span>
+                </a>
             </div>
         </section>
     </main>
     
     <footer>
-        <p>&copy; 2025 - Built for 42 School</p>
+        <div class="footer-content">
+            <p>&copy; 2025 - Built for 42 School by João Pol</p>
+            <div class="personal-links">
+                <a href="https://github.com/mrsloth-dev" target="_blank" rel="noopener" class="personal-link">
+                    <span class="icon">📱</span>
+                    GitHub
+                </a>
+                <a href="https://www.linkedin.com/in/joao-albuquerque-barbosa/" target="_blank" rel="noopener" class="personal-link">
+                    <span class="icon">💼</span>
+                    LinkedIn
+                </a>
+            </div>
+        </div>
     </footer>
     
     <script src="script.js"></script>

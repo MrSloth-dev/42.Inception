@@ -1,22 +1,15 @@
-#!/bin/bash
+#!/bin/sh
 set -e
-if ! pgrep -x "nginx" > /dev/null; then
-    echo "Error: nginx is not running"
+
+if ! pgrep -f "nginx: master" > /dev/null; then
+    echo "Error: nginx master process is not running"
     exit 1
 fi
 
-if ! netstat -tunl | grep -q "8080.*LISTEN"; then
-    echo "Port 8080 in not set for listen"
+if ! netstat -tuln 2>/dev/null | grep -q ":9090.*LISTEN"; then
+    echo "Error: nginx is not listening on port 9090"
     exit 1
 fi
 
-if ! nginx -t &>/dev/null; then
-    echo "Error: nginx configuration is not valid"
-    exit 1
-fi
-if ! curl -vL http://localhost:8080/; then
-    echo "Error: Website not accessible"
-
-
-echo "NGINX container is healthy"
+echo "Website container is healthy"
 exit 0

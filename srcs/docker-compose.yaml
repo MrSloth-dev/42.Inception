@@ -15,6 +15,7 @@ services:
     - db_user
     - db_password
     - db_root_password
+    - wp_db_name
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: 10s

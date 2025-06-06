@@ -21,6 +21,6 @@ RUN chmod +x /usr/local/bin/healthcheck.sh;
 RUN chown -R nginx:nginx /var/www/html \
 	&& chown -R nginx:nginx /var/log/nginx;
 
-EXPOSE 8080
+EXPOSE 9090
 
 ENTRYPOINT [ "nginx", "-g", "daemon off;" ]
