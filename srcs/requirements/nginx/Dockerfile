@@ -28,6 +28,7 @@ RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 COPY /conf/nginx.conf /etc/nginx/nginx.conf
 COPY /conf/default.conf /etc/nginx/conf.d/default.conf
 COPY /conf/adminer.conf /etc/nginx/conf.d/adminer.conf
+COPY /conf/website.conf /etc/nginx/conf.d/website.conf
 COPY /conf/portainer.conf /etc/nginx/conf.d/portainer.conf
 
 RUN mkdir -p /var/run/nginx;

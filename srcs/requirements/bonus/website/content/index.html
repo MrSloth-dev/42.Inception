@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inception Project - Static Site</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <h1>Inception Infrastructure</h1>
+        </nav>
+    </header>
+    
+    <main>
+        <section class="hero">
+            <h2>Docker Infrastructure Project</h2>
+            <p>A containerized web infrastructure built with Docker Compose</p>
+        </section>
+        
+        <section class="services">
+            <h3>Services Overview</h3>
+            <div class="service-grid">
+                <a href="https://joao-pol.42.fr" class="service" target="_blank" rel="noopener">
+                    <h4>NGINX + WordPress</h4>
+                    <p>Main website with reverse proxy and TLS termination</p>
+                    <span class="service-status">🌐</span>
+                </a>
+                
+                <a href="https://joao-pol.42.fr" class="service" target="_blank" rel="noopener">
+                    <h4>WordPress</h4>
+                    <p>Content management system with PHP-FPM</p>
+                    <span class="service-status">📝</span>
+                </a>
+                
+                <div class="service service-internal">
+                    <h4>MariaDB</h4>
+                    <p>Database server for WordPress data</p>
+                    <span class="service-status">🗄️</span>
+                </div>
+                
+                <div class="service service-internal">
+                    <h4>Redis</h4>
+                    <p>Caching layer for improved performance</p>
+                    <span class="service-status">⚡</span>
+                </div>
+                
+                <a href="https://adminer.joao-pol.42.fr" class="service" target="_blank" rel="noopener">
+                    <h4>Adminer</h4>
+                    <p>Database management interface</p>
+                    <span class="service-status">🔧</span>
+                </a>
+                
+                <a href="https://portainer.joao-pol.42.fr" class="service" target="_blank" rel="noopener">
+                    <h4>Portainer</h4>
+                    <p>Container management platform</p>
+                    <span class="service-status">🐳</span>
+                </a>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2025 - Built for 42 School by João Pol</p>
+            <div class="personal-links">
+                <a href="https://github.com/mrsloth-dev" target="_blank" rel="noopener" class="personal-link">
+                    <span class="icon">📱</span>
+                    GitHub
+                </a>
+                <a href="https://www.linkedin.com/in/joao-albuquerque-barbosa/" target="_blank" rel="noopener" class="personal-link">
+                    <span class="icon">💼</span>
+                    LinkedIn
+                </a>
+            </div>
+        </div>
+    </footer>
+    
+    <script src="script.js"></script>
+</body>
+</html>

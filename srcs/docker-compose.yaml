@@ -15,6 +15,7 @@ services:
     - db_user
     - db_password
     - db_root_password
+    - wp_db_name
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: 10s
@@ -37,6 +38,7 @@ services:
       - redis_password
       - db_password
       - db_user
+      - db_host
       - wp_db_host
       - wp_admin_user
       - wp_admin_password
@@ -60,6 +62,7 @@ services:
     depends_on:
       - wordpress
       - portainer
+      - website
     container_name: nginx
     restart: always
     ports:
@@ -146,6 +149,20 @@ services:
       - inception
     secrets:
     - port_password
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  website:
+    image: website:42
+    build:
+      context: ./requirements/bonus/website/
+      dockerfile: Dockerfile
+    container_name: website
+    restart: always
+    networks:
+      - inception
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: 10s
